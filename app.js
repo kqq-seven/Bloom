@@ -123,7 +123,7 @@ function login() {
         <button class="primary" type="submit">${registering ? "创建账号并进入" : "登录"}</button>
       </form>
       <button class="auth-switch" type="button" data-action="toggle-auth">${registering ? "已有账号？登录" : "还没有账号？创建一个"}</button>
-      <small>个人内容会和你的账号一起保存。</small>
+      <small>个人内容会和你的账号一起保存，换设备登录也能继续。</small>
     </section>
   </main>`;
 }
@@ -429,6 +429,9 @@ async function restoreSession() {
   try {
     const response = await fetch("/api/me");
     if (!response.ok) {
+      isAuthenticated = false;
+      account = null;
+      state = createEmptyState();
       render();
       return;
     }
