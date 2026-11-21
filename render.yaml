@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: bloom-web
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: BLOOM_HOST
+        value: 0.0.0.0
+      - key: REQUIRE_DATABASE_URL
+        value: "1"
+      - key: DATABASE_URL
+        sync: false
