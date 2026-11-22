@@ -47,7 +47,8 @@ small { color: var(--muted); }
 .auth-form input { width: 100%; border: 1px solid #eadbd3; border-radius: 13px; padding: 13px; background: var(--white); color: var(--ink); }
 .auth-form .primary { width: 100%; margin-top: 5px; }
 .auth-panel > small { display: block; margin-top: 18px; text-align: center; line-height: 1.6; }
-.auth-switch { display: block; margin: 14px auto 0; padding: 8px 10px; color: var(--brand); font-size: 13px; font-weight: 650; }
+.auth-form input[aria-invalid="true"] { border-color: var(--brand); }
+.auth-form p.danger { color: var(--brand); }
 .topbar {
   position: sticky; top: 0; z-index: 3; display: flex; align-items: center;
   gap: 10px; justify-content: space-between; height: 55px; padding: 0 16px;

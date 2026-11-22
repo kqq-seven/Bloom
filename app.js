@@ -39,7 +39,8 @@ const createEmptyState = () => ({
 let account = null;
 let state = createEmptyState();
 let isAuthenticated = false;
-let authMode = "register";
+let restoringSession = true;
+let sessionError = "";
 let stateSaveTimer;
 let stateSaveMessage = "";
 let activeRoute = "";
@@ -109,21 +110,21 @@ function mainButton(label, attrs, icon = "camera") {
 }
 
 function login() {
-  const registering = authMode === "register";
   return `<main class="auth-page">
     <section class="auth-panel">
       <div class="auth-brand"><span class="auth-mark">✿</span><span class="wordmark">Bloom 拾光</span></div>
       <p class="eyebrow">A SPACE OF YOUR OWN</p>
       <h1>留一方空间，给自己的生活</h1>
-      <p class="subtext">记录日常，收纳喜欢的事。你的空间独立保存，随时可以继续。</p>
-      <form class="auth-form" data-form="account">
-        <label>账号名<input name="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]+" placeholder="3–32 位字母、数字或 . _ -" autocomplete="username"></label>
-        ${registering ? '<label>怎么称呼你<input name="name" required maxlength="24" placeholder="你的名字或昵称" autocomplete="nickname"></label>' : ""}
-        <label>密码<input name="password" type="password" required minlength="8" maxlength="128" placeholder="至少 8 个字符" autocomplete="${registering ? "new-password" : "current-password"}"></label>
-        <button class="primary" type="submit">${registering ? "创建账号并进入" : "登录"}</button>
-      </form>
-      <button class="auth-switch" type="button" data-action="toggle-auth">${registering ? "已有账号？登录" : "还没有账号？创建一个"}</button>
-      <small>个人内容会和你的账号一起保存，换设备登录也能继续。</small>
+      ${restoringSession ? '<p class="subtext" role="status">正在打开你的空间…</p>' : sessionError
+        ? `<p class="subtext" role="alert">${escapeText(sessionError)}</p><button class="primary" type="button" data-action="retry-session">重试</button>`
+        : `<p class="subtext">给自己起个昵称，开始记录生活。</p>
+        <form class="auth-form" data-form="account">
+          <label>昵称<input name="nickname" required placeholder="输入你的昵称" autocomplete="nickname" aria-describedby="nickname-hint nickname-error"></label>
+          <p id="nickname-hint" class="subtext">1–10 个字符，支持中文、英文、数字和表情。</p>
+          <p id="nickname-error" class="subtext danger" role="alert" hidden></p>
+          <button class="primary" type="submit">进入我的空间</button>
+        </form>
+        <small>下次用同一浏览器打开，就能继续记录。</small>`}
     </section>
   </main>`;
 }
@@ -372,10 +373,9 @@ function landing(id, title, choices) {
 
 function profile() {
   return `${topbar('<span class="wordmark">Bloom</span> 我的', { home: true })}
-    <main class="page with-nav stack"><section class="card row">${glyph("avatar")}<div><h1>${escapeText(account?.display_name || "朋友")}</h1><p class="subtext">${escapeText(account?.username || "")}</p></div></section>
+    <main class="page with-nav stack"><section class="card row">${glyph("avatar")}<div><h1>${escapeText(account?.display_name || "朋友")}</h1></div></section>
       <div class="stats"><div>手记<strong>${state.notes.length}</strong></div><div>里程碑<strong>${state.milestones.filter(item => item.done).length}</strong></div><div>完成待办<strong>${state.tasks.filter(item => item.done).length}</strong></div></div>
       <div class="inventory-lines"><a href="#notes">我的手记 <span>›</span></a><a href="#growth">我的里程碑 <span>›</span></a><a href="#storage">我的收纳 <span>›</span></a></div>
-      <button class="secondary" data-action="logout">退出登录</button>
     </main>${nav("profile")}`;
 }
 
@@ -425,29 +425,39 @@ function render() {
   app.innerHTML = isAuthenticated ? routes[activeRoute]() : login();
 }
 
+async function readApiResponse(response, fallback) {
+  if (!response.headers.get("Content-Type")?.includes("application/json")) {
+    throw new Error("暂时无法连接 Bloom 服务，请稍后重试。");
+  }
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || fallback);
+  return result;
+}
+
+async function loadPersonalSpace(user) {
+  const saved = await readApiResponse(await fetch("/api/state"), "个人数据无法读取。");
+  const empty = createEmptyState();
+  state = { ...empty, ...saved.state, cycle: { ...empty.cycle, ...saved.state.cycle } };
+  account = user;
+  isAuthenticated = true;
+}
+
 async function restoreSession() {
+  restoringSession = true;
+  sessionError = "";
+  render();
   try {
     const response = await fetch("/api/me");
-    if (!response.ok) {
-      isAuthenticated = false;
-      account = null;
-      state = createEmptyState();
-      render();
-      return;
+    if (response.status !== 401) {
+      const result = await readApiResponse(response, "无法打开个人空间。");
+      await loadPersonalSpace(result.user);
     }
-    const result = await response.json();
-    account = result.user;
-    const stateResponse = await fetch("/api/state");
-    if (!stateResponse.ok) throw new Error("个人数据无法读取");
-    const saved = await stateResponse.json();
-    state = { ...createEmptyState(), ...saved.state, cycle: { ...createEmptyState().cycle, ...saved.state.cycle } };
-    isAuthenticated = true;
   } catch {
-    account = null;
-    state = createEmptyState();
-    isAuthenticated = false;
+    sessionError = "暂时无法打开 Bloom，请检查网络后重试。";
+  } finally {
+    restoringSession = false;
+    render();
   }
-  render();
 }
 
 function route() {
@@ -569,19 +579,7 @@ document.addEventListener("click", async event => {
   const data = button.dataset;
   if (data.open) return openSheet(data.open, data);
   if (data.action === "close") return sheet.close();
-  if (data.action === "toggle-auth") {
-    authMode = authMode === "register" ? "login" : "register";
-    return render();
-  }
-  if (data.action === "logout") {
-    await saveState();
-    await fetch("/api/auth/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-    account = null;
-    state = createEmptyState();
-    isAuthenticated = false;
-    authMode = "login";
-    return render();
-  }
+  if (data.action === "retry-session") return restoreSession();
   if (data.task !== undefined) state.tasks[data.task].done = !state.tasks[data.task].done;
   else if (data.milestone !== undefined) state.milestones[data.milestone].done = !state.milestones[data.milestone].done;
   else if (data.like !== undefined) state.notes[data.like].liked = !state.notes[data.like].liked;
@@ -622,32 +620,31 @@ document.addEventListener("submit", async event => {
   event.preventDefault();
   const data = new FormData(form);
   if (key === "account") {
-    const username = String(data.get("username") || "").trim().toLocaleLowerCase();
-    const password = String(data.get("password") || "");
-    const name = String(data.get("name") || "").trim();
     const submit = form.querySelector('[type="submit"]');
+    if (submit.disabled) return;
+    const input = form.elements.nickname;
+    const feedback = form.querySelector("#nickname-error");
+    feedback.hidden = true;
+    input.removeAttribute("aria-invalid");
     submit.disabled = true;
     try {
-      const endpoint = authMode === "register" ? "/api/auth/register" : "/api/auth/login";
-      const response = await fetch(endpoint, {
+      const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(authMode === "register" ? { username, password, name } : { username, password }),
+        body: JSON.stringify({ nickname: data.get("nickname") }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "无法登录");
-      account = result.user;
-      const stateResponse = await fetch("/api/state");
-      if (!stateResponse.ok) throw new Error("个人数据无法读取");
-      const saved = await stateResponse.json();
-      state = { ...createEmptyState(), ...saved.state, cycle: { ...createEmptyState().cycle, ...saved.state.cycle } };
-      isAuthenticated = true;
+      if (response.status === 400 || response.status === 409) input.setAttribute("aria-invalid", "true");
+      const result = await readApiResponse(response, "暂时无法使用这个昵称。");
+      await loadPersonalSpace(result.user);
       activeRoute = "home";
       location.hash = "home";
       render();
       window.scrollTo(0, 0);
     } catch (error) {
-      notify(error.message);
+      feedback.textContent = error instanceof TypeError ? "暂时无法连接，请检查网络后重试。" : error.message;
+      feedback.hidden = false;
+      input.focus();
+    } finally {
       submit.disabled = false;
     }
     return;
@@ -708,5 +705,5 @@ document.addEventListener("submit", async event => {
 });
 
 window.addEventListener("hashchange", route);
-render();
+route();
 restoreSession();

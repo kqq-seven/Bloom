@@ -1,10 +1,9 @@
 import hashlib
-import hmac
 import json
 import os
-import re
 import secrets
 import sqlite3
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from contextlib import contextmanager
 from http.cookies import SimpleCookie
@@ -12,12 +11,14 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+import regex
+
 
 ROOT = Path(__file__).resolve().parent
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 DATABASE = Path(os.environ.get("BLOOM_DATABASE", ROOT / "data" / "bloom.sqlite3"))
 SESSION_COOKIE = "bloom_session"
-SESSION_DAYS = 30
+SESSION_DAYS = 400
 MAX_BODY = 2 * 1024 * 1024
 EMPTY_STATE = {
     "tasks": [],
@@ -103,10 +104,6 @@ def initialize_database():
 
 def now_utc():
     return datetime.now(timezone.utc)
-
-
-def hash_password(password, salt):
-    return hashlib.scrypt(password.encode("utf-8"), salt=salt, n=16384, r=8, p=1, dklen=32)
 
 
 def hash_token(token):
@@ -208,51 +205,48 @@ class BloomHandler(SimpleHTTPRequestHandler):
             return self.send_json(400, {"error": "请求内容无效"})
 
         if route == "/api/auth/register":
-            username = str(body.get("username", "")).strip().lower()
-            display_name = str(body.get("name", "")).strip()
-            password = str(body.get("password", ""))
-            if not re.fullmatch(r"[a-z0-9_.-]{3,32}", username):
-                return self.send_json(400, {"error": "账号名需为 3 至 32 位字母、数字或 . _ -"})
-            if not 1 <= len(display_name) <= 24:
-                return self.send_json(400, {"error": "称呼需为 1 至 24 个字符"})
-            if len(password) < 8 or len(password) > 128:
-                return self.send_json(400, {"error": "密码需为 8 至 128 个字符"})
-            salt = secrets.token_bytes(16)
-            password_digest = hash_password(password, salt)
-            try:
-                with open_database() as connection:
-                    cursor = execute(connection,
-                        """
-                        INSERT INTO users (username, display_name, password_salt, password_hash, created_at)
-                        VALUES (?, ?, ?, ?, ?)
-                        RETURNING id
-                        """,
-                        (username, display_name, salt, password_digest, now_utc().isoformat()),
+            nickname = body.get("nickname")
+            if not isinstance(nickname, str):
+                return self.send_json(400, {"error": "请填写昵称。"})
+            display_name = unicodedata.normalize("NFC", nickname.strip())
+            if (
+                regex.search(r"[\p{Cc}\p{Cs}]", display_name)
+                or len(display_name.encode("utf-8")) > 512
+                or len(regex.findall(r"\X", display_name)) > 10
+                or not regex.search(r"[\p{L}\p{N}\p{P}\p{S}]", display_name)
+            ):
+                return self.send_json(400, {"error": "请输入 1–10 个可见字符，可以使用中文、英文、数字或表情。"})
+            current = self.get_user()
+            if current:
+                return self.send_json(200, {"user": current})
+            username = unicodedata.normalize("NFC", display_name.lower())
+            token = secrets.token_urlsafe(32)
+            now = now_utc()
+            with open_database() as connection:
+                user = execute(
+                    connection,
+                    """
+                    INSERT INTO users (username, display_name, password_salt, password_hash, created_at)
+                    SELECT ?, ?, ?, ?, ?
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM users WHERE length(password_hash) > 0 AND lower(display_name) = ?
                     )
-                    user_id = cursor.fetchone()["id"]
-                    execute(connection,
-                        "INSERT INTO user_state (user_id, payload, updated_at) VALUES (?, ?, ?)",
-                        (user_id, json.dumps(EMPTY_STATE), now_utc().isoformat()),
-                    )
-            except Exception as error:
-                if isinstance(error, sqlite3.IntegrityError) or error.__class__.__name__ == "UniqueViolation":
-                    return self.send_json(409, {"error": "这个账号名已经被使用"})
-                raise
-            return self.create_session(user_id)
+                    ON CONFLICT(username) DO NOTHING
+                    RETURNING id, display_name
+                    """,
+                    (username, display_name, b"", b"", now.isoformat(), username),
+                ).fetchone()
+                if not user:
+                    return self.send_json(409, {"error": "这个昵称已被使用，请换一个。"})
+                execute(
+                    connection,
+                    "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
+                    (hash_token(token), user["id"], (now + timedelta(days=SESSION_DAYS)).isoformat()),
+                )
+            return self.send_json(201, {"user": dict(user)}, cookie=token)
 
         if route == "/api/auth/login":
-            username = str(body.get("username", "")).strip().lower()
-            password = str(body.get("password", ""))
-            with open_database() as connection:
-                user = execute(connection,
-                    "SELECT id, password_salt, password_hash FROM users WHERE username = ?",
-                    (username,),
-                ).fetchone()
-            if not user or not hmac.compare_digest(
-                hash_password(password, user["password_salt"]), user["password_hash"]
-            ):
-                return self.send_json(401, {"error": "账号名或密码不正确"})
-            return self.create_session(user["id"])
+            return self.send_json(410, {"error": "请刷新页面，使用昵称进入。"})
 
         if route == "/api/auth/logout":
             cookie = SimpleCookie()
@@ -285,19 +279,6 @@ class BloomHandler(SimpleHTTPRequestHandler):
                 )
             return self.send_json(200, {"ok": True})
         return self.send_json(404, {"error": "接口不存在"})
-
-    def create_session(self, user_id):
-        token = secrets.token_urlsafe(32)
-        expires_at = (now_utc() + timedelta(days=SESSION_DAYS)).isoformat()
-        with open_database() as connection:
-            execute(connection,
-                "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
-                (hash_token(token), user_id, expires_at),
-            )
-            user = execute(connection,
-                "SELECT id, username, display_name FROM users WHERE id = ?", (user_id,)
-            ).fetchone()
-        return self.send_json(200, {"user": dict(user)}, cookie=token)
 
     def do_PUT(self):
         if urlparse(self.path).path != "/api/state":

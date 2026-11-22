@@ -8,4 +8,6 @@
 6. In the D1 console, run migrations/0001_init.sql.
 7. Redeploy the Pages project. Use its pages.dev address for the public preview.
 
-The Pages Functions use the DB binding for authentication, sessions, and per-user data. No database URL or payment card is needed for the D1 binding.
+The Pages Functions use the DB binding to reserve unique nicknames, create browser sessions, and store personal records. The nickname-only flow uses the existing D1 schema. Keep the same database when redeploying.
+
+Returning visitors resume their space through a session cookie. A nickname alone cannot restore access on another device or after the cookie is cleared.
