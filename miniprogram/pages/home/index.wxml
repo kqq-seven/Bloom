@@ -26,30 +26,13 @@
   </view>
 
   <view class="section-title">我的空间</view>
+  <input class="module-search" placeholder="搜索功能" value="{{search}}" bindinput="onSearch" />
   <view class="module-grid">
-    <view class="module-card" bindtap="openCycle">
-      <view class="module-icon cycle-icon-bg">◷</view>
-      <text class="module-title">经期与周期</text>
-      <text class="module-copy">{{cycleTile}}</text>
-      <text class="module-link">记录身体节律 →</text>
-    </view>
-    <view class="module-card" bindtap="addTask">
-      <view class="module-icon task-icon-bg">✓</view>
-      <text class="module-title">今日待办</text>
-      <text class="module-copy">{{taskCount}} 项待办</text>
-      <text class="module-link">添加待办 →</text>
-    </view>
-    <view class="module-card" bindtap="openProfile">
-      <view class="module-icon note-icon-bg">✎</view>
-      <text class="module-title">个人空间</text>
-      <text class="module-copy">查看账号与偏好</text>
-      <text class="module-link">打开我的 →</text>
-    </view>
-    <view class="module-card" bindtap="addNote">
-      <view class="module-icon note-icon-bg">✿</view>
-      <text class="module-title">随心记事</text>
-      <text class="module-copy">{{noteCount}} 条手记</text>
-      <text class="module-link">写下手记 →</text>
+    <view wx:for="{{visibleModules}}" wx:key="id" class="module-card" data-id="{{item.id}}" bindtap="openModule">
+      <view class="module-icon {{item.tone}}">{{item.icon}}</view>
+      <text class="module-title">{{item.title}}</text>
+      <text class="module-copy">{{item.description}}</text>
+      <text class="module-link">进入空间 →</text>
     </view>
   </view>
 

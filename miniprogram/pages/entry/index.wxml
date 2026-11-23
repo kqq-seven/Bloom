@@ -1,0 +1,38 @@
+<view class="page-shell">
+  <view class="eyebrow">BLOOM JOURNAL</view>
+  <view class="page-title">{{title}}</view>
+  <form bindsubmit="submit">
+    <block wx:if="{{type === 'task'}}">
+      <text class="field-label">待办内容</text><input class="input" name="name" maxlength="100" placeholder="写下一件想完成的事" focus />
+      <text class="field-label">分类标签</text><input class="input" name="tag" maxlength="30" value="今日待办" />
+    </block>
+    <block wx:elif="{{type === 'time'}}">
+      <text class="field-label">安排名称</text><input class="input" name="name" maxlength="70" placeholder="例如：专注工作" focus />
+      <text class="field-label">开始时间</text><picker mode="time" name="time" value="{{time}}" bindchange="onTimeChange"><view class="input picker-value">{{time}}</view></picker>
+      <text class="field-label">备注</text><input class="input" name="detail" maxlength="80" placeholder="可选" />
+    </block>
+    <block wx:elif="{{type === 'item'}}">
+      <text class="field-label">收纳分类</text><picker mode="selector" range="{{categoryNames}}" value="{{categoryIndex}}" bindchange="onCategoryChange"><view class="input picker-value">{{categoryNames[categoryIndex]}}</view></picker>
+      <text class="field-label">物品名称</text><input class="input" name="name" maxlength="70" placeholder="例如：纯棉短袖" focus />
+      <text class="field-label">存放位置或到期日</text><input class="input" name="detail" maxlength="80" placeholder="抽屉、收纳盒或赏味日期" />
+      <text class="field-label">数量</text><input class="input" name="quantity" type="number" value="1" />
+      <text class="field-label">备注分类</text><input class="input" name="kind" maxlength="30" value="新录入" />
+      <text class="field-label">状态</text><input class="input" name="status" maxlength="40" placeholder="例如：临期、常备" />
+      <view class="photo-picker" bindtap="choosePhoto"><image wx:if="{{photoPath}}" src="{{photoPath}}" mode="aspectFill" class="photo-preview" /><text wx:else>＋ 添加物品照片</text></view>
+    </block>
+    <block wx:elif="{{type === 'meal'}}">
+      <text class="field-label">餐次</text><picker mode="selector" range="{{mealOptions}}" value="{{mealIndex}}" bindchange="onMealChange"><view class="input picker-value">{{mealOptions[mealIndex]}}</view></picker>
+      <text class="field-label">餐食名称</text><input class="input" name="name" maxlength="70" placeholder="例如：燕麦酸奶碗" focus />
+      <text class="field-label">热量（千卡）</text><input class="input" name="kcal" type="number" value="0" />
+      <view class="photo-picker" bindtap="choosePhoto"><image wx:if="{{photoPath}}" src="{{photoPath}}" mode="aspectFill" class="photo-preview" /><text wx:else>＋ 添加餐食照片</text></view>
+    </block>
+    <block wx:elif="{{type === 'note'}}">
+      <text class="field-label">想写的话</text><textarea class="textarea" name="name" maxlength="500" placeholder="记下此刻…" focus />
+      <view class="photo-picker" bindtap="choosePhoto"><image wx:if="{{photoPath}}" src="{{photoPath}}" mode="aspectFill" class="photo-preview" /><text wx:else>＋ 拍一张照 / 从相册选择</text></view>
+    </block>
+    <block wx:elif="{{type === 'milestone'}}">
+      <text class="field-label">里程碑名称</text><input class="input" name="name" maxlength="70" placeholder="写下一个对自己重要的小目标" focus />
+    </block>
+    <button class="primary submit-button" form-type="submit" loading="{{busy}}" disabled="{{busy}}">保存到我的空间</button>
+  </form>
+</view>

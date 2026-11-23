@@ -1,0 +1,55 @@
+<view class="page-shell">
+  <view class="eyebrow">BLOOM YOUR SPACE</view>
+  <view class="page-title">{{title}}</view>
+
+  <block wx:if="{{kind === 'todo'}}">
+    <view class="card"><view class="row between"><text class="section-heading">今日进展</text><text class="brand">{{doneCount}} / {{tasks.length}} 项完成</text></view><view class="progress-track"><view class="progress-fill" style="width: {{progress}}%"></view></view></view>
+    <view wx:for="{{tasks}}" wx:key="index" class="card task-row" data-index="{{item.index}}" bindtap="toggleTask"><view class="task-check {{item.done ? 'checked' : ''}}">{{item.done ? '✓' : ''}}</view><view class="grow"><text class="item-title">{{item.name}}</text><text class="muted">{{item.tag || '今日待办'}} {{item.time}}</text></view></view>
+    <view wx:if="{{!tasks.length}}" class="card empty-card"><text class="item-title">清单还是空的</text><text class="muted">添加第一件今天想完成的事。</text></view>
+    <button class="primary add-button" data-type="task" bindtap="addEntry">＋ 添加待办</button>
+  </block>
+
+  <block wx:elif="{{kind === 'plan'}}">
+    <view class="soft-card"><text class="eyebrow">今天</text><text class="section-heading">按自己的节奏安排时间</text></view><view class="section-title">今日时间线</view>
+    <view wx:for="{{schedule}}" wx:key="index" class="card schedule-row"><text class="pill pill-mint">{{item.time}}</text><view class="grow"><text class="item-title">{{item.name}}</text><text class="muted">{{item.detail}}</text></view></view>
+    <view wx:if="{{!schedule.length}}" class="card empty-card"><text class="muted">还没有时间安排，添加一段适合自己的时间。</text></view><button class="primary add-button" data-type="time" bindtap="addEntry">＋ 添加时间块</button>
+  </block>
+
+  <block wx:elif="{{kind === 'storage'}}">
+    <view wx:if="{{!category}}"><view class="card"><text class="section-heading">物品概览</text><text class="muted">已经添加 {{items.length}} 件物品，分布在不同收纳空间。</text></view>
+      <view wx:for="{{categories}}" wx:key="id" class="card category-row" data-category="{{item.id}}" bindtap="openCategory"><view class="grow"><text class="item-title">{{item.title}}</text><text class="muted">{{item.count}} 件</text></view><text class="arrow">›</text></view><button class="primary add-button" data-type="item" bindtap="addEntry">＋ 添加物品</button>
+    </view>
+    <view wx:else><view class="card"><text class="muted">{{categoryTitle}} · {{items.length}} 件</text></view><input class="search-input" placeholder="搜索名称、位置或备注" value="{{search}}" bindinput="onSearch" />
+      <scroll-view scroll-x class="filter-strip"><view class="filter-row"><text wx:for="{{filters}}" wx:key="label" class="filter-chip {{item.selected ? 'filter-selected' : ''}}" data-filter="{{item.label}}" bindtap="onFilter">{{item.label}}</text></view></scroll-view>
+      <view wx:if="{{category === 'clothes'}}" class="sort-row" bindtap="toggleSort"><text class="muted">按位置排序　{{sortByPlace ? '已开启' : '↕'}}</text></view>
+      <view wx:for="{{items}}" wx:key="index" class="card inventory-card"><image wx:if="{{item.photo}}" class="item-photo" src="{{item.photo}}" mode="aspectFill" /><view class="grow"><text class="item-title">{{item.name}}</text><text class="muted">{{item.detail || '未填写位置或日期'}}</text><text class="muted">{{item.kind || '新录入'}} {{item.status}}</text>
+        <view wx:if="{{item.category !== 'clothes'}}" class="quantity-row"><text>{{item.count || 0}} {{item.unit}}</text><view class="quantity-controls"><text data-index="{{item.index}}" data-step="-1" bindtap="adjustQuantity">−</text><text data-index="{{item.index}}" data-step="1" bindtap="adjustQuantity">＋</text></view></view></view></view>
+      <view wx:if="{{!items.length}}" class="card empty-card"><text class="muted">这里还没有物品，添加后会保存在你的空间。</text></view><button class="primary add-button" data-type="item" data-category="{{category}}" bindtap="addEntry">＋ 添加物品</button>
+    </view>
+  </block>
+
+  <block wx:elif="{{kind === 'meals'}}">
+    <view class="card overview-card"><text class="muted">今天的餐食</text><text class="calorie-total">{{totalCalories}} <text class="muted">kcal</text></text></view>
+    <view wx:for="{{meals}}" wx:key="index" class="card meal-card"><view class="row between"><text class="item-title">{{item.name}}</text><text class="muted">{{item.time}}</text></view><image wx:if="{{item.photo}}" class="meal-photo" src="{{item.photo}}" mode="aspectFill" />
+      <view wx:for="{{item.lines}}" wx:for-item="line" wx:for-index="lineIndex" wx:key="lineIndex" class="row between meal-line"><text>{{line[0]}}</text><text class="brand">{{line[1]}} kcal</text></view><text wx:if="{{!item.lines.length}}" class="muted">未填写餐食明细</text>
+    </view><view wx:if="{{!meals.length}}" class="card empty-card"><text class="muted">今天还没有餐食记录，添加第一餐吧。</text></view><button class="primary add-button" data-type="meal" bindtap="addEntry">＋ 记录餐食</button>
+  </block>
+
+  <block wx:elif="{{kind === 'mood'}}">
+    <view class="card"><text class="section-heading">今天的情绪天气</text><view class="mood-grid"><view wx:for="{{moods}}" wx:key="index" class="mood-option {{item.selected ? 'mood-selected' : ''}}" data-index="{{item.index}}" bindtap="selectMood"><text>{{item.label}}</text></view></view><text wx:if="{{mood !== null}}" class="muted energy-label">今日能量 {{moods[mood].energy}}%</text></view>
+    <view class="card"><text class="section-heading">是什么温暖了今天</text><view class="moment-grid"><text wx:for="{{moments}}" wx:key="index" class="moment-tag {{item.selected ? 'moment-selected' : ''}}" data-index="{{item.index}}" bindtap="toggleMoment">{{item.label}}</text></view></view>
+    <view class="card journal-card"><text class="section-heading">三行微确幸</text><textarea wx:for="{{journal}}" wx:key="index" class="journal-input" data-index="{{index}}" value="{{item}}" maxlength="240" placeholder="写下一件今天的小确幸…" bindinput="onJournalInput" /></view><button class="primary add-button" bindtap="saveMood">保存今天的心情</button>
+  </block>
+
+  <block wx:elif="{{kind === 'growth'}}">
+    <view class="soft-card"><text class="section-heading">给自己一个小目标</text><text class="muted">记下每一次小小的前进。</text></view>
+    <view wx:for="{{milestones}}" wx:key="index" class="card task-row" data-index="{{item.index}}" bindtap="toggleMilestone"><view class="task-check {{item.done ? 'checked' : ''}}">{{item.done ? '✓' : ''}}</view><text class="grow item-title">{{item.name}}</text></view>
+    <view wx:if="{{!milestones.length}}" class="card empty-card"><text class="muted">还没有设定目标，添加一个对自己重要的小目标。</text></view><button class="primary add-button" data-type="milestone" bindtap="addEntry">＋ 添加里程碑</button>
+  </block>
+
+  <block wx:elif="{{kind === 'notes'}}">
+    <view class="row note-actions"><button class="primary" data-type="note" bindtap="addEntry">＋ 写下手记</button><button class="secondary" bindtap="chooseNotePhoto">拍照 / 选照片</button></view>
+    <view wx:for="{{notes}}" wx:key="index" class="card note-card"><image wx:if="{{item.photo}}" class="note-photo" src="{{item.photo}}" mode="aspectFill" /><text class="note-text">{{item.text}}</text><view class="row between note-footer"><text class="muted">{{item.date}} · {{item.tag || '随手记'}}</text><text class="like-button" data-index="{{item.index}}" bindtap="toggleLike">{{item.liked ? '♥ 已收藏' : '♡ 收藏'}}</text></view></view>
+    <view wx:if="{{!notes.length}}" class="card empty-card"><text class="muted">还没有手记，写下第一条或拍一张照片吧。</text></view>
+  </block>
+</view>

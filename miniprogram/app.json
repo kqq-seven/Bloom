@@ -3,7 +3,9 @@
     "pages/home/index",
     "pages/cycle/index",
     "pages/profile/index",
-    "pages/auth/index"
+    "pages/auth/index",
+    "pages/space/index",
+    "pages/entry/index"
   ],
   "window": {
     "navigationBarTitleText": "Bloom 拾光",

@@ -6,3 +6,9 @@
 .info-title { font-size: 27rpx; font-weight: 700; }
 .info-copy { line-height: 1.65; font-size: 23rpx; }
 .signout { width: 100%; margin-top: 36rpx; }
+.stats-card { display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx; }
+.stat-value { display: block; color: #894838; font-family: Georgia, serif; font-size: 36rpx; font-weight: 700; }
+.section-title { margin: 30rpx 0 12rpx; font-size: 30rpx; font-weight: 700; }
+.link-list { overflow: hidden; border-radius: 22rpx; background: #fffdfa; }
+.link-list navigator { display: flex; justify-content: space-between; padding: 24rpx; border-bottom: 1rpx solid #f0e5de; font-size: 26rpx; }
+.link-list navigator:last-child { border-bottom: 0; }

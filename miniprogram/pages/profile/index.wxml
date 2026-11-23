@@ -5,6 +5,17 @@
     <view class="account-avatar">{{avatarText}}</view>
     <view class="account-info"><text class="account-name">{{nickname}}</text><text class="muted">Bloom 拾光</text></view>
   </view>
+  <view class="card stats-card"><view><text class="stat-value">{{stats.done}} / {{stats.tasks}}</text><text class="muted">完成待办</text></view><view><text class="stat-value">{{stats.milestones}}</text><text class="muted">达成目标</text></view><view><text class="stat-value">{{stats.items}}</text><text class="muted">收纳物品</text></view><view><text class="stat-value">{{stats.notes}}</text><text class="muted">生活手记</text></view></view>
+  <view class="section-title">我的空间</view>
+  <view class="link-list">
+    <navigator url="/pages/space/index?module=todo">今日待办 <text>›</text></navigator>
+    <navigator url="/pages/space/index?module=plan">一日时间规划 <text>›</text></navigator>
+    <navigator url="/pages/space/index?module=storage">收纳与物品 <text>›</text></navigator>
+    <navigator url="/pages/space/index?module=meals">手账食记 <text>›</text></navigator>
+    <navigator url="/pages/space/index?module=mood">情绪日记 <text>›</text></navigator>
+    <navigator url="/pages/space/index?module=growth">成就与成长 <text>›</text></navigator>
+    <navigator url="/pages/space/index?module=notes">随心记事 <text>›</text></navigator>
+  </view>
   <view class="card info-card">
     <text class="info-title">跨设备使用</text>
     <text class="muted info-copy">使用相同昵称和密码登录，个人记录会保存在 Bloom 云端空间。</text>

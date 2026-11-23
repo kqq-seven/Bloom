@@ -24,3 +24,7 @@
 .module-link { margin-top: auto; padding-top: 16rpx; color: #894838; font-size: 21rpx; font-weight: 650; }
 .latest-note { display: flex; flex-direction: column; gap: 12rpx; margin-top: 25rpx; padding: 24rpx; border-radius: 24rpx; background: #f7eee8; }
 .latest-note-copy { font-family: Georgia, "Songti SC", serif; font-size: 29rpx; font-weight: 650; line-height: 1.5; }
+.module-search { height: 76rpx; margin: 0 0 18rpx; padding: 0 22rpx; border-radius: 18rpx; background: #fffdfa; font-size: 25rpx; }
+.mint { background: #dcefe5; color: #476257; }
+.rose { background: #f2e7df; color: #894838; }
+.coral { background: #f8ded6; color: #894838; }
