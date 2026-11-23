@@ -112,7 +112,7 @@ def hash_token(token):
 
 
 def hash_password(password, salt):
-    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 310_000)
+    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
 
 
 class BloomHandler(SimpleHTTPRequestHandler):
