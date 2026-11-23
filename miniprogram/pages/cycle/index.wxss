@@ -1,0 +1,40 @@
+.intro { display: block; margin: 8rpx 0 24rpx; line-height: 1.6; }
+.calendar-card { padding: 24rpx; }
+.month-heading { margin-bottom: 22rpx; }
+.month-title { font-family: Georgia, "Songti SC", serif; font-size: 34rpx; font-weight: 700; }
+.month-actions { gap: 28rpx; }
+.month-arrow { padding: 4rpx 12rpx; color: #894838; font-size: 44rpx; line-height: 1; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); justify-items: center; align-items: center; row-gap: 12rpx; }
+.weekday { width: 54rpx; color: #8c7d76; text-align: center; font-size: 21rpx; }
+.day { display: grid; place-items: center; width: 54rpx; height: 54rpx; border-radius: 50%; color: #514740; font-size: 22rpx; }
+.day-empty { visibility: hidden; }
+.day-recorded { background: #ecd9d2; color: #894838; font-weight: 700; }
+.day-estimate { background: #fbe9e2; color: #a65d4f; }
+.day-today { outline: 2rpx solid #894838; outline-offset: -4rpx; }
+.calendar-legend { display: flex; gap: 30rpx; margin-top: 22rpx; color: #806f68; font-size: 21rpx; }
+.legend-dot { display: inline-block; width: 14rpx; height: 14rpx; margin-right: 8rpx; border-radius: 50%; }
+.recorded-dot { background: #b47d6d; }
+.estimate-dot { background: #f4cfc3; }
+.cycle-overview { margin-top: 30rpx; }
+.section-title { font-size: 32rpx; font-weight: 700; }
+.metric-card, .estimate-card { display: flex; flex-direction: column; gap: 10rpx; margin-top: 18rpx; padding: 25rpx; border-radius: 24rpx; background: #fffdfa; }
+.metric-label { color: #806f68; font-size: 23rpx; }
+.metric-number { color: #894838; font-family: Georgia, "Songti SC", serif; font-size: 46rpx; font-weight: 700; }
+.estimate-card { background: #f7eee8; }
+.estimate-copy { color: #704437; font-size: 29rpx; font-weight: 700; line-height: 1.5; }
+.estimate-date, .estimate-note { display: block; line-height: 1.55; font-size: 22rpx; }
+.estimate-note { color: #8c7a72; }
+.action-row { display: flex; gap: 14rpx; margin-top: 22rpx; }
+.mini-primary, .mini-secondary { display: inline-block; min-height: 76rpx; padding: 0 24rpx; line-height: 76rpx; font-size: 24rpx; }
+.reminder-row { display: flex; align-items: center; justify-content: space-between; margin-top: 20rpx; }
+.reminder-title, .reminder-copy { display: block; }
+.reminder-title { font-size: 26rpx; font-weight: 650; }
+.reminder-copy { margin-top: 7rpx; font-size: 21rpx; }
+.empty-card { display: flex; flex-direction: column; align-items: flex-start; gap: 18rpx; margin-top: 30rpx; padding: 32rpx; }
+.empty-title { font-size: 34rpx; font-weight: 700; }
+.empty-copy { line-height: 1.65; }
+.history-section { margin-top: 32rpx; }
+.history-card { display: flex; align-items: center; justify-content: space-between; margin-top: 14rpx; }
+.history-name, .history-dates { display: block; }
+.history-name { font-size: 27rpx; font-weight: 650; }
+.history-dates { margin-top: 7rpx; font-size: 21rpx; }

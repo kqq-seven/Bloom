@@ -1,0 +1,28 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/cycle/index",
+    "pages/profile/index",
+    "pages/auth/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "Bloom 拾光",
+    "navigationBarBackgroundColor": "#fdf7f3",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#fdf7f3",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#705d55",
+    "selectedColor": "#894838",
+    "backgroundColor": "#fffdfa",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/index", "text": "拾光" },
+      { "pagePath": "pages/cycle/index", "text": "经期" },
+      { "pagePath": "pages/profile/index", "text": "我的" }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}

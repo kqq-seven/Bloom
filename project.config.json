@@ -1,0 +1,56 @@
+{
+  "description": "Bloom 拾光微信小程序",
+  "packOptions": {
+    "ignore": [
+      {
+        "value": "node_modules",
+        "type": "folder"
+      },
+      {
+        "value": ".git",
+        "type": "folder"
+      },
+      {
+        "value": "functions",
+        "type": "folder"
+      },
+      {
+        "value": "dist",
+        "type": "folder"
+      }
+    ],
+    "include": []
+  },
+  "setting": {
+    "es6": true,
+    "minified": false,
+    "urlCheck": true,
+    "coverView": true,
+    "lazyloadPlaceholderEnable": true,
+    "postcss": false,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "enhance": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.8.8",
+  "appid": "wx6f97227cb14de402",
+  "projectname": "Bloom 拾光",
+  "miniprogramRoot": "miniprogram/",
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
+}

@@ -1,0 +1,18 @@
+<view class="page-shell">
+  <view class="eyebrow">YOUR SPACE</view>
+  <view class="page-title">我的</view>
+  <view class="card account-card">
+    <view class="account-avatar">{{avatarText}}</view>
+    <view class="account-info"><text class="account-name">{{nickname}}</text><text class="muted">Bloom 拾光</text></view>
+  </view>
+  <view class="card info-card">
+    <text class="info-title">跨设备使用</text>
+    <text class="muted info-copy">使用相同昵称和密码登录，个人记录会保存在 Bloom 云端空间。</text>
+  </view>
+  <view class="card info-card">
+    <text class="info-title">关于经期估算</text>
+    <text class="muted info-copy">估算根据你记录的经期开始日期计算。记录越完整，个人周期估算越有参考价值。</text>
+  </view>
+  <button class="secondary signout" loading="{{signingOut}}" bindtap="signOut">退出当前账号</button>
+  <text wx:if="{{error}}" class="hint error">{{error}}</text>
+</view>

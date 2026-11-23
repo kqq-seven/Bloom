@@ -1,0 +1,54 @@
+<view class="page-shell">
+  <view class="eyebrow">CYCLE JOURNAL</view>
+  <view class="page-title">经期与周期</view>
+  <view class="muted intro">记录每次开始与结束，逐渐了解自己的身体节律。</view>
+
+  <view class="card calendar-card">
+    <view class="row between month-heading">
+      <text class="month-title">{{monthLabel}}</text>
+      <view class="row month-actions"><text class="month-arrow" bindtap="previousMonth">‹</text><text class="month-arrow" bindtap="nextMonth">›</text></view>
+    </view>
+    <view class="calendar-grid">
+      <text wx:for="{{weekdays}}" wx:key="*this" class="weekday">{{item}}</text>
+      <view wx:for="{{calendar}}" wx:key="key" class="day {{item.className}}">{{item.label}}</view>
+    </view>
+    <view class="calendar-legend"><text><text class="legend-dot recorded-dot"></text>已记录</text><text><text class="legend-dot estimate-dot"></text>估算经期</text></view>
+  </view>
+
+  <view wx:if="{{summary.last}}" class="cycle-overview">
+    <view class="row between"><text class="section-title">身体节律</text><text class="pill pill-mint">{{summary.last.end ? '上次持续 ' + lastPeriodLength + ' 天' : '本次第 ' + summary.currentPeriodDay + ' 天'}}</text></view>
+    <view class="metric-card">
+      <text class="metric-label">上次经期结束至今</text>
+      <text class="metric-number">{{summary.last.end ? summary.daysSinceEnd + ' 天' : '本次经期进行中'}}</text>
+      <text class="muted">{{summary.last.end ? '结束日期 ' + summary.last.end : '开始日期 ' + summary.last.start}}</text>
+    </view>
+    <view class="estimate-card">
+      <text class="metric-label">下次经期估算</text>
+      <text class="estimate-copy">{{estimateText}}</text>
+      <text wx:if="{{summary.nextStart}}" class="muted estimate-date">预计开始 {{summary.nextStart}} · 平均周期约 {{summary.averageCycle}} 天</text>
+      <text class="estimate-note">根据已记录的经期开始日期估算，仅供个人节律参考。</text>
+    </view>
+    <view class="action-row">
+      <picker mode="date" value="{{today}}" end="{{today}}" bindchange="onStartDate"><view class="primary mini-primary">{{summary.last.end ? '记录新一期开始' : '修改本次开始日'}}</view></picker>
+      <picker wx:if="{{!summary.last.end}}" mode="date" value="{{today}}" start="{{summary.last.start}}" end="{{today}}" bindchange="onEndDate"><view class="secondary mini-secondary">记录本次结束</view></picker>
+    </view>
+    <view class="card reminder-row">
+      <view><text class="reminder-title">在小程序内显示周期提醒</text><text class="muted reminder-copy">打开小程序时查看经期进度和估算</text></view>
+      <switch color="#894838" checked="{{cycle.reminder}}" bindchange="onReminderChange" />
+    </view>
+  </view>
+
+  <view wx:else class="card empty-card">
+    <text class="empty-title">记录你的第一期经期</text>
+    <text class="muted empty-copy">先记录开始和结束日期。至少有两次开始日期后，就能按你的实际间隔估算下次经期。</text>
+    <picker mode="date" value="{{today}}" end="{{today}}" bindchange="onStartDate"><view class="primary mini-primary">记录开始日期</view></picker>
+  </view>
+
+  <view wx:if="{{history.length}}" class="history-section">
+    <view class="row between"><text class="section-title">经期记录</text><text class="muted">{{history.length}} 次</text></view>
+    <view wx:for="{{history}}" wx:key="start" class="card history-card">
+      <view><text class="history-name">第 {{item.number}} 次</text><text class="muted history-dates">{{item.start}} 至 {{item.end || '进行中'}}</text></view>
+      <text class="pill {{item.end ? 'pill-mint' : 'pill-rose'}}">{{item.durationLabel}}</text>
+    </view>
+  </view>
+</view>

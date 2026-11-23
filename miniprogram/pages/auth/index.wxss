@@ -1,0 +1,8 @@
+.auth-page { min-height: 100vh; padding: 19vh 48rpx 60rpx; background: #fdf7f3; }
+.auth-brand { display: flex; align-items: center; gap: 20rpx; margin-bottom: 68rpx; }
+.auth-mark { display: grid; place-items: center; width: 74rpx; height: 74rpx; border-radius: 50%; background: #f8ded6; color: #894838; text-align: center; line-height: 74rpx; font-size: 44rpx; }
+.wordmark { color: #894838; font-family: Georgia, "Songti SC", serif; font-size: 38rpx; font-weight: 700; }
+.auth-title { display: block; margin: 18rpx 0; font-size: 48rpx; font-weight: 750; line-height: 1.35; }
+.auth-copy { display: block; margin-bottom: 32rpx; color: #806f68; line-height: 1.7; }
+.auth-submit { margin-top: 40rpx; }
+.auth-foot { display: block; margin-top: 25rpx; color: #897a73; text-align: center; font-size: 23rpx; }

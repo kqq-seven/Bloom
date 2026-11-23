@@ -1,0 +1,60 @@
+<view class="page-shell">
+  <view class="home-heading">
+    <view>
+      <text class="wordmark">Bloom 拾光</text>
+      <text class="greeting">你好，{{nickname}}</text>
+      <text class="muted">{{todayLabel}} · 按自己的节律生活</text>
+    </view>
+    <view class="avatar">{{avatarText}}</view>
+  </view>
+
+  <view wx:if="{{empty}}" class="empty-start">
+    <text class="empty-flower">✿</text>
+    <text class="empty-title">这里是属于你的空间</text>
+    <text class="muted empty-copy">从一件待办、一段手记或一次身体记录开始，慢慢添上自己的生活。</text>
+    <button class="primary compact" bindtap="addTask">添加第一件待办</button>
+  </view>
+
+  <view wx:if="{{cycleSummary.last}}" class="cycle-reminder" bindtap="openCycle">
+    <view class="cycle-icon">♡</view>
+    <view class="cycle-reminder-copy">
+      <text class="cycle-reminder-title">{{cycleSummary.last.end ? '距上次经期结束' : '本次经期进行中'}}</text>
+      <text class="pill">{{cycleStatus}}</text>
+      <text class="cycle-reminder-note">{{cycleForecast}}</text>
+    </view>
+    <text class="arrow">›</text>
+  </view>
+
+  <view class="section-title">我的空间</view>
+  <view class="module-grid">
+    <view class="module-card" bindtap="openCycle">
+      <view class="module-icon cycle-icon-bg">◷</view>
+      <text class="module-title">经期与周期</text>
+      <text class="module-copy">{{cycleTile}}</text>
+      <text class="module-link">记录身体节律 →</text>
+    </view>
+    <view class="module-card" bindtap="addTask">
+      <view class="module-icon task-icon-bg">✓</view>
+      <text class="module-title">今日待办</text>
+      <text class="module-copy">{{taskCount}} 项待办</text>
+      <text class="module-link">添加待办 →</text>
+    </view>
+    <view class="module-card" bindtap="openProfile">
+      <view class="module-icon note-icon-bg">✎</view>
+      <text class="module-title">个人空间</text>
+      <text class="module-copy">查看账号与偏好</text>
+      <text class="module-link">打开我的 →</text>
+    </view>
+    <view class="module-card" bindtap="addNote">
+      <view class="module-icon note-icon-bg">✿</view>
+      <text class="module-title">随心记事</text>
+      <text class="module-copy">{{noteCount}} 条手记</text>
+      <text class="module-link">写下手记 →</text>
+    </view>
+  </view>
+
+  <view wx:if="{{latestNote}}" class="latest-note">
+    <text class="eyebrow">我的最近一条手记</text>
+    <text class="latest-note-copy">{{latestNote}}</text>
+  </view>
+</view>

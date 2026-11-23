@@ -1,0 +1,17 @@
+<view class="auth-page">
+  <view class="auth-brand"><text class="auth-mark">✿</text><text class="wordmark">Bloom 拾光</text></view>
+  <text class="eyebrow">A SPACE OF YOUR OWN</text>
+  <text class="auth-title">留一方空间，给自己的生活</text>
+  <text class="auth-copy">输入昵称和密码。新组合会创建空间，已注册的组合会登录。</text>
+  <form bindsubmit="submit">
+    <text class="field-label">昵称</text>
+    <input class="input" name="nickname" maxlength="32" placeholder="输入你的昵称" value="{{nickname}}" />
+    <text class="hint">1–10 个字符，支持中文、英文、数字和表情。</text>
+    <text class="field-label">密码</text>
+    <input class="input" name="password" password maxlength="128" placeholder="至少 8 个字符" />
+    <text class="hint">首次使用此昵称时设置密码。之后使用同一组合登录。</text>
+    <text wx:if="{{error}}" class="hint error">{{error}}</text>
+    <button class="primary auth-submit" form-type="submit" loading="{{submitting}}" disabled="{{submitting}}">登录 / 注册</button>
+  </form>
+  <text class="auth-foot">昵称已存在或密码错误时，请检查后重试。</text>
+</view>

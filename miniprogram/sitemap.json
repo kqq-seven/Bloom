@@ -1,0 +1,6 @@
+{
+  "desc": "Bloom mini program pages",
+  "rules": [
+    { "action": "allow", "page": "*" }
+  ]
+}

@@ -1,0 +1,8 @@
+.account-card { display: flex; align-items: center; gap: 20rpx; margin-top: 26rpx; }
+.account-avatar { display: grid; place-items: center; width: 88rpx; height: 88rpx; border-radius: 50%; background: #f8ded6; color: #894838; font-size: 40rpx; font-weight: 700; }
+.account-info { display: flex; flex-direction: column; gap: 8rpx; }
+.account-name { font-size: 32rpx; font-weight: 700; }
+.info-card { display: flex; flex-direction: column; gap: 12rpx; margin-top: 20rpx; }
+.info-title { font-size: 27rpx; font-weight: 700; }
+.info-copy { line-height: 1.65; font-size: 23rpx; }
+.signout { width: 100%; margin-top: 36rpx; }
