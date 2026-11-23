@@ -3,6 +3,7 @@
 const app = document.querySelector("#app");
 const sheet = document.querySelector("#sheet");
 const toast = document.querySelector("#toast");
+const { dateKey, dayDistance, normalizeCycle, cycleSummary, savePeriodStart, savePeriodEnd } = window.BloomCycle;
 
 const modules = [
   { id: "todo", title: "今日待办", detail: "从一件重要小事开始", foot: "添加待办", tone: "" },
@@ -33,7 +34,7 @@ const warmMoments = [
 
 const createEmptyState = () => ({
   tasks: [], schedule: [], items: [], notes: [], meals: [], mood: null,
-  moments: [], journal: ["", "", ""], cycle: { start: "", end: "", reminder: false }, milestones: [],
+  moments: [], journal: ["", "", ""], cycle: { start: "", end: "", reminder: false, history: [] }, milestones: [],
 });
 
 let account = null;
@@ -132,6 +133,7 @@ function login() {
 }
 
 function home() {
+  const cycleInfo = cycleSummary(state.cycle);
   const todayModules = modules.map(item => {
     if (item.id === "todo" && state.tasks.length) return { ...item, badge: `${state.tasks.filter(task => task.done).length}/${state.tasks.length} 件` };
     if (item.id === "mood" && state.mood !== null) return { ...item, badge: weather[state.mood][1] };
@@ -148,7 +150,7 @@ function home() {
         ${iconButton("查看全部空间", glyph("tune"), 'data-open="spaces"')}
       </section>
       ${!state.tasks.length && !state.items.length && !state.notes.length ? `<section class="empty-start"><span class="empty-start-mark">✿</span><h2>这里是属于你的空间</h2><p>从一件物品、一条待办或一段手记开始，慢慢添上自己的生活。</p><button class="primary" data-open="quick-note">写下第一条记录</button></section>` : ""}
-      ${state.cycle.start ? `<a class="alert urgent" href="#cycle"><span class="alert-icon">♡</span><div><strong>我的经期记录</strong>${pill(state.cycle.end ? "已记录" : "进行中")}<p>查看个人周期日历与记录。</p></div><span class="arrow">›</span></a>` : ""}
+      ${cycleInfo.last ? `<a class="alert urgent" href="#cycle"><span class="alert-icon">♡</span><div><strong>${cycleInfo.last.end ? "距上次经期结束" : "本次经期进行中"}</strong>${pill(cycleInfo.last.end ? `第 ${cycleInfo.daysSinceEnd} 天` : `第 ${cycleInfo.currentPeriodDay} 天`)}<p>${cycleInfo.daysUntilNext === null ? "再记录一次经期开始日，即可生成个人周期估算。" : cycleInfo.daysUntilNext > 0 ? `按你的记录，预计约 ${cycleInfo.daysUntilNext} 天后来经。` : cycleInfo.daysUntilNext === 0 ? "按你的记录，预计今天来经。" : `预计日期已过 ${Math.abs(cycleInfo.daysUntilNext)} 天，记录新周期可更新估算。`}</p></div><span class="arrow">›</span></a>` : ""}
       <div class="section-title"><h2><span class="brand" aria-hidden="true">⊞</span> 我的空间</h2><small>内容由你添加</small></div>
       <div class="grid">${todayModules.map(tile).join("")}</div>
       ${state.notes.length ? `<aside class="quote"><small>我的手记</small><blockquote>${escapeText(state.notes[0].text || "照片记录")}</blockquote></aside>` : ""}
@@ -260,28 +262,42 @@ function cycle() {
   const currentMonth = month.getMonth();
   const days = new Date(year, currentMonth + 1, 0).getDate();
   const offset = new Date(year, currentMonth, 1).getDay();
-  const start = state.cycle.start;
-  const end = state.cycle.end;
-  const recordedDays = start ? Math.floor((new Date(end || new Date()) - new Date(start)) / 86400000) + 1 : 0;
+  const summary = cycleSummary(state.cycle);
+  const last = summary.last;
+  const signedEstimate = summary.daysUntilNext;
+  const nextPeriodText = signedEstimate === null
+    ? "记录至少两次经期开始日后，可按你的周期估算下次时间。"
+    : signedEstimate > 0
+      ? `按你已记录的周期，预计约 ${signedEstimate} 天后开始。`
+      : signedEstimate === 0
+        ? "按你的记录，预计今天开始。"
+        : `预计日期已过 ${Math.abs(signedEstimate)} 天，记录新周期后会更新估算。`;
+  const latestDay = summary.currentPeriodDay;
   return `${topbar("经期日历与记录", { sub: "记录自己的身体节律" })}
     <main class="page stack">
       <section class="card">
-        <div class="row split"><div class="row"><h2 class="serif">${year}年 ${currentMonth + 1}月</h2>${start ? pill("已记录", "mint") : ""}</div>
+        <div class="row split"><div class="row"><h2 class="serif">${year}年 ${currentMonth + 1}月</h2>${summary.startsCount ? pill(`已记录 ${summary.startsCount} 次`, "mint") : ""}</div>
           <div class="row">${iconButton("上个月", "‹", 'data-month="-1"')}${iconButton("下个月", "›", 'data-month="1"')}</div></div>
         <div class="calendar-grid">${"日一二三四五六".split("").map(day => `<small>${day}</small>`).join("")}${"<span></span>".repeat(offset)}
           ${Array.from({ length: days }, (_, index) => {
             const day = index + 1;
             const date = `${year}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-            const recorded = Boolean(start && date >= start && (!end || date <= end));
-            return `<button class="${recorded ? "logged" : ""}" data-day="${date}" aria-pressed="${chosenDay === date}" aria-label="${date}">${day}</button>`;
+            const recorded = summary.history.some(item => date >= item.start && (!item.end || date <= item.end));
+            const predicted = summary.nextStart && summary.predictedEnd && date >= summary.nextStart && date <= summary.predictedEnd;
+            return `<button class="${recorded ? "logged" : predicted ? "prediction" : ""}" data-day="${date}" aria-pressed="${chosenDay === date}" aria-label="${date}">${day}</button>`;
           }).join("")}</div>
-        <div class="legend"><span class="brand">● 经期已来</span><span>◌ 预计经期</span><span class="positive">● 易孕/排卵</span></div>
+        <div class="legend"><span class="brand">● 已记录经期</span><span>◌ 预计经期</span></div>
       </section>
-      ${!start ? `<section class="empty-state"><h2>还没有周期记录</h2><p>添加经期开始日期后，这里会显示你的个人日历。</p><button class="primary" data-open="cycle-start">记录开始日期</button></section>` : `<section class="soft stack"><div class="row split"><h3 class="brand">我的周期记录</h3>${pill(end ? "已结束" : `第 ${recordedDays} 天`, "mint")}</div>
-        <div class="card row split"><div><small>开始日期</small><h3>${escapeText(start)}</h3></div><button class="secondary" data-open="cycle-start">修改</button></div>
-        <div class="card row split"><div><small>结束日期</small><h3>${end ? escapeText(end) : "尚未记录"}</h3></div><button class="primary" data-open="cycle-end">${end ? "修改" : "记录结束日期"}</button></div>
-        <label class="card row split"><span>提醒偏好</span><input type="checkbox" data-action="reminder" ${state.cycle.reminder ? "checked" : ""}></label>
-      </section>`}
+      ${last ? `<section class="soft stack">
+        <div class="row split"><h2>身体节律</h2>${pill(last.end ? `上次经期持续 ${dayDistance(last.start, last.end) + 1} 天` : `本次第 ${latestDay} 天`, "mint")}</div>
+        <div class="card"><small>上次经期结束至今</small><h1 class="brand serif" style="margin:5px 0">${last.end ? `${summary.daysSinceEnd} 天` : "经期尚未结束"}</h1><p class="subtext">${last.end ? `结束日期 ${escapeText(last.end)}` : `开始日期 ${escapeText(last.start)}`}</p></div>
+        <div class="card"><small>下次经期估算</small><h2 class="brand" style="margin:6px 0">${nextPeriodText}</h2>${summary.nextStart ? `<p class="subtext">预计开始 ${escapeText(summary.nextStart)}${summary.averageCycle ? ` · 平均周期 ${summary.averageCycle} 天` : ""}</p>` : ""}<p class="subtext" style="margin-top:5px">按已记录的经期开始日期估算，仅作个人节律参考。</p></div>
+        <div class="row"><button class="primary" data-open="${last.end ? "cycle-start" : "cycle-start"}">记录新一期开始</button>${last.end ? "" : `<button class="secondary" data-open="cycle-end">记录本次结束</button>`}</div>
+        <label class="card row split"><span>显示周期提醒</span><input type="checkbox" data-action="reminder" ${state.cycle.reminder ? "checked" : ""}></label>
+      </section>` : `<section class="empty-state"><h2>记录你的第一期经期</h2><p>先记录开始和结束日期。再记录下一次开始后，就能根据你的实际间隔估算下次经期。</p><button class="primary" data-open="cycle-start">记录开始日期</button></section>`}
+      ${summary.history.length ? `<section class="stack"><div class="row split"><h2>经期记录</h2><small>${summary.history.length} 次</small></div>
+        ${[...summary.history].reverse().map((item, index) => `<article class="card row split"><div><strong>第 ${summary.history.length - index} 次</strong><p class="subtext">${escapeText(item.start)} 至 ${item.end ? escapeText(item.end) : "进行中"}</p></div>${item.end ? pill(`持续 ${dayDistance(item.start, item.end) + 1} 天`, "mint") : pill(`第 ${dayDistance(item.start, summary.today) + 1} 天`, "coral")}</article>`).join("")}
+      </section>` : ""}
     </main>`;
 }
 
@@ -445,7 +461,7 @@ async function readApiResponse(response, fallback) {
 async function loadPersonalSpace(user) {
   const saved = await readApiResponse(await fetch("/api/state"), "个人数据无法读取。");
   const empty = createEmptyState();
-  state = { ...empty, ...saved.state, cycle: { ...empty.cycle, ...saved.state.cycle } };
+  state = { ...empty, ...saved.state, cycle: normalizeCycle(saved.state.cycle) };
   account = user;
   isAuthenticated = true;
 }
@@ -489,15 +505,19 @@ function searchList(query = "") {
 function openSheet(name, options) {
   const category = options.category || "clothes";
   const itemOptions = categories.map(item => `<option value="${item.id}"${item.id === category ? " selected" : ""}>${item.title}</option>`).join("");
-  const cycleDate = name === "cycle-end" ? state.cycle.end : state.cycle.start;
+  const cycleState = normalizeCycle(state.cycle);
+  const activePeriod = cycleState.history.length
+    ? cycleState.history[cycleState.history.length - 1]
+    : null;
+  const cycleDate = name === "cycle-end" ? activePeriod?.end || "" : activePeriod && !activePeriod.end ? activePeriod.start : "";
   const dialogContents = {
     "quick-note": ["随手记录", `${photoPicker()}<label>想写的话<textarea name="text" rows="3" maxlength="500" placeholder="记下此刻…"></textarea></label>`, "留存此刻"],
     "item": ["快速录入物品", `<label>类别<select name="category">${itemOptions}</select></label><label>物品名称<input name="name" required maxlength="70" placeholder="例如 纯棉短袖"></label>
       <label>存放位置或到期日<input name="detail" maxlength="80" placeholder="抽屉、收纳盒或赏味日期"></label><label>数量<input type="number" name="quantity" required min="0" max="9999" value="1"></label>${photoPicker()}`, "保存物品"],
     "time": ["添加时间块", '<label>安排<input name="name" required maxlength="70"></label><label>开始时间<input name="time" type="time" required></label><label>备注<input name="detail" maxlength="80"></label>', "添加时间块"],
     "milestone": ["添加里程碑", '<label>里程碑名称<input name="name" required maxlength="70"></label>', "添加里程碑"],
-    "cycle-start": ["修改经期开始日", `<label>开始日期<input name="date" type="date" value="${cycleDate}" required></label>`, "保存日期"],
-    "cycle-end": ["记录经期结束日", `<label>结束日期<input name="date" type="date" min="${state.cycle.start}" value="${cycleDate || (chosenDay >= state.cycle.start ? chosenDay : state.cycle.start)}" required></label>`, "保存日期"],
+    "cycle-start": [activePeriod && !activePeriod.end ? "修改本次经期开始日" : "记录新一期经期", `<label>开始日期<input name="date" type="date" value="${cycleDate || dateKey()}" max="${dateKey()}" required></label>`, "保存日期"],
+    "cycle-end": ["记录本次经期结束日", `<label>结束日期<input name="date" type="date" min="${activePeriod?.start || ""}" max="${dateKey()}" value="${cycleDate || dateKey()}" required></label>`, "保存日期"],
     "meal": ["记录餐食", '<label>餐次<select name="mealType"><option>早餐</option><option>午餐</option><option>晚餐</option><option>加餐</option></select></label><label>餐食名称<input name="name" required maxlength="70"></label><label>热量（千卡）<input name="kcal" type="number" min="0" max="9999" value="0" required></label>', "添入食记"],
     "meal-photo": ["餐食照片", `<input type="hidden" name="index" value="${escapeText(options.index)}">${photoPicker()}`, "保存照片"],
   };
@@ -715,11 +735,8 @@ document.addEventListener("submit", async event => {
         state.items.push({ name, category, detail, photo: picture, kind: "新录入", count: Number(data.get("quantity")), unit });
         break;
       }
-      case "cycle-start":
-        state.cycle.start = String(data.get("date"));
-        if (state.cycle.end && state.cycle.start > state.cycle.end) state.cycle.end = "";
-        break;
-      case "cycle-end": state.cycle.end = String(data.get("date")); break;
+      case "cycle-start": state.cycle = savePeriodStart(state.cycle, String(data.get("date"))); break;
+      case "cycle-end": state.cycle = savePeriodEnd(state.cycle, String(data.get("date"))); break;
       case "meal": {
         const mealType = String(data.get("mealType"));
         state.meals.push({
