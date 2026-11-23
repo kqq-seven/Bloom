@@ -1,0 +1,9 @@
+<view class="page-shell">
+  <view class="page-heading"><text class="wordmark">Bloom</text><text class="page-title">手账</text></view>
+  <view class="intro-copy">收集日常片刻，记录今天的心情与味道。</view>
+  <view class="module-grid">
+    <view wx:for="{{modules}}" wx:key="id" class="module-card" data-id="{{item.id}}" bindtap="openModule">
+      <view class="module-icon {{item.tone}}">{{item.icon}}</view><text class="module-title">{{item.title}}</text><text class="module-copy">{{item.detail}}</text><text class="module-link">进入空间 →</text>
+    </view>
+  </view>
+</view>

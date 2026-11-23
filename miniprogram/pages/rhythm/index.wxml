@@ -1,0 +1,10 @@
+<view class="page-shell">
+  <view class="page-heading"><text class="wordmark">Bloom</text><text class="page-title">节律</text></view>
+  <view class="intro-copy">按自己的节奏安排生活，也留意身体变化。</view>
+  <view wx:if="{{reminder}}" class="reminder-card"><text class="reminder-icon">♡</text><view><text class="reminder-title">经期提醒</text><text class="reminder-copy">{{reminder}}</text></view></view>
+  <view class="module-grid">
+    <view wx:for="{{modules}}" wx:key="id" class="module-card" data-id="{{item.id}}" bindtap="openModule">
+      <view class="module-icon {{item.tone}}">{{item.icon}}</view><text class="module-title">{{item.title}}</text><text class="module-copy">{{item.detail}}</text><text class="module-link">进入空间 →</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,13 @@
+.page-heading { display: flex; align-items: baseline; gap: 12rpx; margin: 12rpx 0; }
+.wordmark { color: #894838; font-family: Georgia, serif; font-size: 33rpx; font-weight: 700; }
+.page-title { font-size: 38rpx; font-weight: 700; }
+.intro-copy { margin-bottom: 22rpx; color: #806f68; font-size: 24rpx; }
+.module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; }
+.module-card { min-height: 220rpx; display: flex; flex-direction: column; align-items: flex-start; padding: 22rpx; border-radius: 24rpx; background: #fffdfa; box-shadow: 0 7rpx 22rpx rgba(74,47,35,.045); }
+.module-icon { display: grid; place-items: center; width: 58rpx; height: 58rpx; margin-bottom: 16rpx; border-radius: 50%; font-size: 31rpx; }
+.rose { background: #f8ded6; color: #894838; }
+.mint { background: #dcefe5; color: #476257; }
+.sand { background: #f2e7df; color: #745d53; }
+.module-title { font-size: 27rpx; font-weight: 700; }
+.module-copy { margin-top: 8rpx; color: #806f68; font-size: 22rpx; }
+.module-link { margin-top: auto; padding-top: 16rpx; color: #894838; font-size: 21rpx; }

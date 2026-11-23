@@ -1,14 +1,18 @@
-.account-card { display: flex; align-items: center; gap: 20rpx; margin-top: 26rpx; }
+.topbar { display: flex; align-items: center; gap: 10rpx; height: 72rpx; font-size: 25rpx; }
+.wordmark { color: #894838; font-family: Georgia, serif; font-size: 31rpx; font-weight: 700; }
+.account-card { display: flex; align-items: center; gap: 20rpx; margin-top: 18rpx; }
 .account-avatar { display: grid; place-items: center; width: 88rpx; height: 88rpx; border-radius: 50%; background: #f8ded6; color: #894838; font-size: 40rpx; font-weight: 700; }
 .account-info { display: flex; flex-direction: column; gap: 8rpx; }
 .account-name { font-size: 32rpx; font-weight: 700; }
-.info-card { display: flex; flex-direction: column; gap: 12rpx; margin-top: 20rpx; }
-.info-title { font-size: 27rpx; font-weight: 700; }
-.info-copy { line-height: 1.65; font-size: 23rpx; }
-.signout { width: 100%; margin-top: 36rpx; }
-.stats-card { display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx; }
-.stat-value { display: block; color: #894838; font-family: Georgia, serif; font-size: 36rpx; font-weight: 700; }
+.stats-card { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin: 22rpx 0; text-align: center; }
+.stats-card > view { display: flex; flex-direction: column; gap: 5rpx; padding: 18rpx 5rpx; border-radius: 18rpx; background: #fffdfa; }
+.stat-label { color: #806f68; font-size: 22rpx; }
+.stat-value { display: block; color: #894838; font-family: Georgia, serif; font-size: 34rpx; font-weight: 700; }
 .section-title { margin: 30rpx 0 12rpx; font-size: 30rpx; font-weight: 700; }
 .link-list { overflow: hidden; border-radius: 22rpx; background: #fffdfa; }
-.link-list navigator { display: flex; justify-content: space-between; padding: 24rpx; border-bottom: 1rpx solid #f0e5de; font-size: 26rpx; }
-.link-list navigator:last-child { border-bottom: 0; }
+.link-list > view { display: flex; justify-content: space-between; padding: 24rpx; border-bottom: 1rpx solid #f0e5de; font-size: 26rpx; }
+.link-list > view:last-child { border-bottom: 0; }
+.password-card { display: flex; flex-direction: column; gap: 12rpx; }
+.password-input { height: 80rpx; padding: 0 18rpx; border-radius: 15rpx; background: #faf5f1; }
+.password-button { margin-top: 10rpx; }
+.signout { width: 100%; margin-top: 28rpx; }

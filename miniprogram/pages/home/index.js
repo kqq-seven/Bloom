@@ -51,7 +51,7 @@ Page({
     ];
   },
 
-  openCycle() { wx.switchTab({ url: "/pages/cycle/index" }); },
+  openCycle() { wx.navigateTo({ url: "/pages/cycle/index" }); },
   openProfile() { wx.switchTab({ url: "/pages/profile/index" }); },
 
   openModule(event) {

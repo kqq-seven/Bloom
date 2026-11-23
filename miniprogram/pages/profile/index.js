@@ -1,5 +1,5 @@
 Page({
-  data: { nickname: "", avatarText: "✿", signingOut: false, error: "", stats: { tasks: 0, done: 0, notes: 0, milestones: 0, items: 0 } },
+  data: { nickname: "", avatarText: "✿", signingOut: false, error: "", passwordSet: true, stats: { notes: 0, milestones: 0, tasks: 0 } },
 
   onShow() {
     const app = getApp();
@@ -8,14 +8,34 @@ Page({
     this.setData({
       nickname: name,
       avatarText: Array.from(name)[0] || "✿",
+      passwordSet: Boolean(app.globalData.user?.password_set),
       stats: {
-        tasks: state.tasks?.length || 0,
-        done: (state.tasks || []).filter(item => item.done).length,
         notes: state.notes?.length || 0,
         milestones: (state.milestones || []).filter(item => item.done).length,
-        items: state.items?.length || 0,
+        tasks: (state.tasks || []).filter(item => item.done).length,
       },
     });
+  },
+
+  openSpace(event) {
+    const module = event.currentTarget.dataset.module;
+    wx.navigateTo({ url: `/pages/space/index?module=${module}` });
+  },
+
+  openStorage() { wx.navigateTo({ url: "/pages/space/index?module=storage" }); },
+
+  async savePassword(event) {
+    const password = String(event.detail.value.password || "");
+    if (password.length < 8) return this.setData({ error: "密码至少需要 8 个字符。" });
+    this.setData({ error: "" });
+    try {
+      await getApp().request("/api/auth/password", { method: "POST", data: { password } });
+      getApp().globalData.user.password_set = 1;
+      this.setData({ passwordSet: true });
+      wx.showToast({ title: "登录密码已设置", icon: "success" });
+    } catch (error) {
+      this.setData({ error: error.message || "设置失败，请重试。" });
+    }
   },
 
   async signOut() {

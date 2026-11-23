@@ -1,29 +1,9 @@
 <view class="page-shell">
-  <view class="eyebrow">YOUR SPACE</view>
-  <view class="page-title">我的</view>
-  <view class="card account-card">
-    <view class="account-avatar">{{avatarText}}</view>
-    <view class="account-info"><text class="account-name">{{nickname}}</text><text class="muted">Bloom 拾光</text></view>
-  </view>
-  <view class="card stats-card"><view><text class="stat-value">{{stats.done}} / {{stats.tasks}}</text><text class="muted">完成待办</text></view><view><text class="stat-value">{{stats.milestones}}</text><text class="muted">达成目标</text></view><view><text class="stat-value">{{stats.items}}</text><text class="muted">收纳物品</text></view><view><text class="stat-value">{{stats.notes}}</text><text class="muted">生活手记</text></view></view>
-  <view class="section-title">我的空间</view>
-  <view class="link-list">
-    <navigator url="/pages/space/index?module=todo">今日待办 <text>›</text></navigator>
-    <navigator url="/pages/space/index?module=plan">一日时间规划 <text>›</text></navigator>
-    <navigator url="/pages/space/index?module=storage">收纳与物品 <text>›</text></navigator>
-    <navigator url="/pages/space/index?module=meals">手账食记 <text>›</text></navigator>
-    <navigator url="/pages/space/index?module=mood">情绪日记 <text>›</text></navigator>
-    <navigator url="/pages/space/index?module=growth">成就与成长 <text>›</text></navigator>
-    <navigator url="/pages/space/index?module=notes">随心记事 <text>›</text></navigator>
-  </view>
-  <view class="card info-card">
-    <text class="info-title">跨设备使用</text>
-    <text class="muted info-copy">使用相同昵称和密码登录，个人记录会保存在 Bloom 云端空间。</text>
-  </view>
-  <view class="card info-card">
-    <text class="info-title">关于经期估算</text>
-    <text class="muted info-copy">估算根据你记录的经期开始日期计算。记录越完整，个人周期估算越有参考价值。</text>
-  </view>
-  <button class="secondary signout" loading="{{signingOut}}" bindtap="signOut">退出当前账号</button>
+  <view class="topbar"><text class="wordmark">Bloom</text><text>我的</text></view>
+  <view class="card account-card"><view class="account-avatar">{{avatarText}}</view><text class="account-name">{{nickname}}</text></view>
+  <view class="stats-card"><view><text class="stat-label">手记</text><text class="stat-value">{{stats.notes}}</text></view><view><text class="stat-label">里程碑</text><text class="stat-value">{{stats.milestones}}</text></view><view><text class="stat-label">完成待办</text><text class="stat-value">{{stats.tasks}}</text></view></view>
+  <view class="link-list"><view data-module="notes" bindtap="openSpace">我的手记 <text>›</text></view><view data-module="growth" bindtap="openSpace">我的里程碑 <text>›</text></view><view bindtap="openStorage">我的收纳 <text>›</text></view></view>
+  <form wx:if="{{!passwordSet}}" class="card password-card" bindsubmit="savePassword"><text class="section-title">设置登录密码</text><text class="muted">为之前已进入的昵称账号添加密码。</text><input class="password-input" name="password" type="password" minlength="8" maxlength="128" placeholder="至少 8 个字符" /><button class="primary password-button" form-type="submit">保存密码</button></form>
+  <button class="secondary signout" loading="{{signingOut}}" bindtap="signOut">退出登录</button>
   <text wx:if="{{error}}" class="hint error">{{error}}</text>
 </view>

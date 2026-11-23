@@ -1,11 +1,13 @@
 {
   "pages": [
     "pages/home/index",
-    "pages/cycle/index",
+    "pages/journal/index",
+    "pages/rhythm/index",
     "pages/profile/index",
     "pages/auth/index",
     "pages/space/index",
-    "pages/entry/index"
+    "pages/entry/index",
+    "pages/cycle/index"
   ],
   "window": {
     "navigationBarTitleText": "Bloom 拾光",
@@ -20,8 +22,9 @@
     "backgroundColor": "#fffdfa",
     "borderStyle": "white",
     "list": [
-      { "pagePath": "pages/home/index", "text": "拾光" },
-      { "pagePath": "pages/cycle/index", "text": "经期" },
+      { "pagePath": "pages/home/index", "text": "首页" },
+      { "pagePath": "pages/journal/index", "text": "手账" },
+      { "pagePath": "pages/rhythm/index", "text": "节律" },
       { "pagePath": "pages/profile/index", "text": "我的" }
     ]
   },
