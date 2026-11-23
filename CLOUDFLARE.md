@@ -8,6 +8,6 @@
 6. In the D1 console, run migrations/0001_init.sql.
 7. Redeploy the Pages project. Use its pages.dev address for the public preview.
 
-The Pages Functions use the DB binding to reserve unique nicknames, create browser sessions, and store personal records. The nickname-only flow uses the existing D1 schema. Keep the same database when redeploying.
+The Pages Functions use the DB binding to reserve unique nicknames, verify password hashes, create browser sessions, and store personal records. Keep the same database when redeploying.
 
-Returning visitors resume their space through a session cookie. A nickname alone cannot restore access on another device or after the cookie is cleared.
+The first nickname-and-password combination creates an account. Returning users enter the same combination. Passwords need at least eight characters. Sessions resume automatically in the same browser. A nickname-only account with an active old session can set its first password from the Profile page.

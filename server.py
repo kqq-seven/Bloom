@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import os
 import secrets
@@ -110,6 +111,10 @@ def hash_token(token):
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def hash_password(password, salt):
+    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 310_000)
+
+
 class BloomHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -163,7 +168,8 @@ class BloomHandler(SimpleHTTPRequestHandler):
         with open_database() as connection:
             row = execute(connection,
                 """
-                SELECT users.id, users.username, users.display_name
+                SELECT users.id, users.username, users.display_name,
+                    CASE WHEN length(users.password_hash) > 0 THEN 1 ELSE 0 END AS password_set
                 FROM sessions
                 JOIN users ON users.id = sessions.user_id
                 WHERE sessions.token_hash = ? AND sessions.expires_at > ?
@@ -204,10 +210,11 @@ class BloomHandler(SimpleHTTPRequestHandler):
         if body is None:
             return self.send_json(400, {"error": "请求内容无效"})
 
-        if route == "/api/auth/register":
+        if route in ("/api/auth/register", "/api/auth/login"):
             nickname = body.get("nickname")
-            if not isinstance(nickname, str):
-                return self.send_json(400, {"error": "请填写昵称。"})
+            password = body.get("password")
+            if not isinstance(nickname, str) or not isinstance(password, str):
+                return self.send_json(400, {"error": "请填写昵称和密码。"})
             display_name = unicodedata.normalize("NFC", nickname.strip())
             if (
                 regex.search(r"[\p{Cc}\p{Cs}]", display_name)
@@ -216,37 +223,100 @@ class BloomHandler(SimpleHTTPRequestHandler):
                 or not regex.search(r"[\p{L}\p{N}\p{P}\p{S}]", display_name)
             ):
                 return self.send_json(400, {"error": "请输入 1–10 个可见字符，可以使用中文、英文、数字或表情。"})
+            if not 8 <= len(password) <= 128:
+                return self.send_json(400, {"error": "密码需为 8–128 个字符。"})
             current = self.get_user()
-            if current:
-                return self.send_json(200, {"user": current})
             username = unicodedata.normalize("NFC", display_name.lower())
-            token = secrets.token_urlsafe(32)
+            salt = secrets.token_bytes(16)
+            password_digest = hash_password(password, salt)
+            if current:
+                if current["username"] != username:
+                    return self.send_json(401, {"error": "昵称已存在或密码错误，请重试。"})
+                with open_database() as connection:
+                    stored = execute(
+                        connection,
+                        "SELECT password_salt, password_hash FROM users WHERE id = ?",
+                        (current["id"],),
+                    ).fetchone()
+                    if not stored["password_hash"]:
+                        execute(
+                            connection,
+                            "UPDATE users SET password_salt = ?, password_hash = ? WHERE id = ? AND password_hash = ?",
+                            (salt, password_digest, current["id"], b""),
+                        )
+                        current["password_set"] = 1
+                    elif not hmac.compare_digest(
+                        hash_password(password, stored["password_salt"]),
+                        stored["password_hash"],
+                    ):
+                        return self.send_json(401, {"error": "昵称已存在或密码错误，请重试。"})
+                return self.send_json(200, {"user": current})
+
+            user_id = None
             now = now_utc()
             with open_database() as connection:
                 user = execute(
                     connection,
                     """
                     INSERT INTO users (username, display_name, password_salt, password_hash, created_at)
-                    SELECT ?, ?, ?, ?, ?
-                    WHERE NOT EXISTS (
-                        SELECT 1 FROM users WHERE length(password_hash) > 0 AND lower(display_name) = ?
-                    )
+                    VALUES (?, ?, ?, ?, ?)
                     ON CONFLICT(username) DO NOTHING
-                    RETURNING id, display_name
+                    RETURNING id, username, display_name
                     """,
-                    (username, display_name, b"", b"", now.isoformat(), username),
+                    (username, display_name, salt, password_digest, now.isoformat()),
                 ).fetchone()
-                if not user:
-                    return self.send_json(409, {"error": "这个昵称已被使用，请换一个。"})
+                if user:
+                    user_id = user["id"]
+                    execute(
+                        connection,
+                        "INSERT INTO user_state (user_id, payload, updated_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO NOTHING",
+                        (user_id, json.dumps(EMPTY_STATE), now.isoformat()),
+                    )
+            if user_id is not None:
+                token = secrets.token_urlsafe(32)
+                with open_database() as connection:
+                    execute(
+                        connection,
+                        "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
+                        (hash_token(token), user_id, (now + timedelta(days=SESSION_DAYS)).isoformat()),
+                    )
+                return self.send_json(201, {"user": {**dict(user), "password_set": 1}}, cookie=token)
+            with open_database() as connection:
+                user = execute(
+                    connection,
+                    "SELECT id, username, display_name, password_salt, password_hash, 1 AS password_set FROM users WHERE username = ?",
+                    (username,),
+                ).fetchone()
+            if not user or not user["password_hash"] or not hmac.compare_digest(
+                hash_password(password, user["password_salt"]), user["password_hash"]
+            ):
+                return self.send_json(401, {"error": "昵称已存在或密码错误，请重试。"})
+            token = secrets.token_urlsafe(32)
+            with open_database() as connection:
                 execute(
                     connection,
                     "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
                     (hash_token(token), user["id"], (now + timedelta(days=SESSION_DAYS)).isoformat()),
                 )
-            return self.send_json(201, {"user": dict(user)}, cookie=token)
+            return self.send_json(200, {"user": {"id": user["id"], "username": user["username"], "display_name": user["display_name"], "password_set": 1}}, cookie=token)
 
-        if route == "/api/auth/login":
-            return self.send_json(410, {"error": "请刷新页面，使用昵称进入。"})
+        if route == "/api/auth/password":
+            current = self.get_user()
+            if not current:
+                return self.send_json(401, {"error": "登录状态已过期"})
+            if current["password_set"]:
+                return self.send_json(409, {"error": "这个账号已经设置过密码。"})
+            password = body.get("password")
+            if not isinstance(password, str) or not 8 <= len(password) <= 128:
+                return self.send_json(400, {"error": "密码需为 8–128 个字符。"})
+            salt = secrets.token_bytes(16)
+            with open_database() as connection:
+                execute(
+                    connection,
+                    "UPDATE users SET password_salt = ?, password_hash = ? WHERE id = ? AND password_hash = ?",
+                    (salt, hash_password(password, salt), current["id"], b""),
+                )
+            return self.send_json(200, {"ok": True})
 
         if route == "/api/auth/logout":
             cookie = SimpleCookie()

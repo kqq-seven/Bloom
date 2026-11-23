@@ -117,14 +117,16 @@ function login() {
       <h1>留一方空间，给自己的生活</h1>
       ${restoringSession ? '<p class="subtext" role="status">正在打开你的空间…</p>' : sessionError
         ? `<p class="subtext" role="alert">${escapeText(sessionError)}</p><button class="primary" type="button" data-action="retry-session">重试</button>`
-        : `<p class="subtext">给自己起个昵称，开始记录生活。</p>
+        : `<p class="subtext">输入昵称和密码。新组合会创建空间，已注册的组合会登录。</p>
         <form class="auth-form" data-form="account">
-          <label>昵称<input name="nickname" required placeholder="输入你的昵称" autocomplete="nickname" aria-describedby="nickname-hint nickname-error"></label>
+          <label>昵称<input name="nickname" required maxlength="32" placeholder="输入你的昵称" autocomplete="username" aria-describedby="nickname-hint nickname-error"></label>
           <p id="nickname-hint" class="subtext">1–10 个字符，支持中文、英文、数字和表情。</p>
+          <label>密码<input name="password" type="password" required minlength="8" maxlength="128" placeholder="至少 8 个字符" autocomplete="current-password" aria-describedby="password-hint"></label>
+          <p id="password-hint" class="subtext">首次使用此昵称时设置密码。之后使用同一组合登录。</p>
           <p id="nickname-error" class="subtext danger" role="alert" hidden></p>
-          <button class="primary" type="submit">进入我的空间</button>
+          <button class="primary" type="submit">登录 / 注册</button>
         </form>
-        <small>下次用同一浏览器打开，就能继续记录。</small>`}
+        <small>昵称已存在或密码错误时，请检查后重试。</small>`}
     </section>
   </main>`;
 }
@@ -376,6 +378,12 @@ function profile() {
     <main class="page with-nav stack"><section class="card row">${glyph("avatar")}<div><h1>${escapeText(account?.display_name || "朋友")}</h1></div></section>
       <div class="stats"><div>手记<strong>${state.notes.length}</strong></div><div>里程碑<strong>${state.milestones.filter(item => item.done).length}</strong></div><div>完成待办<strong>${state.tasks.filter(item => item.done).length}</strong></div></div>
       <div class="inventory-lines"><a href="#notes">我的手记 <span>›</span></a><a href="#growth">我的里程碑 <span>›</span></a><a href="#storage">我的收纳 <span>›</span></a></div>
+      ${account?.password_set ? "" : `<form class="card auth-form" data-form="password-setup">
+        <h2>设置登录密码</h2><p class="subtext">为之前已进入的昵称账号添加密码，之后可在其他设备登录。</p>
+        <label>新密码<input name="password" type="password" required minlength="8" maxlength="128" autocomplete="new-password" placeholder="至少 8 个字符"></label>
+        <button class="primary" type="submit">保存密码</button>
+      </form>`}
+      <button class="secondary" data-action="logout">退出登录</button>
     </main>${nav("profile")}`;
 }
 
@@ -580,6 +588,15 @@ document.addEventListener("click", async event => {
   if (data.open) return openSheet(data.open, data);
   if (data.action === "close") return sheet.close();
   if (data.action === "retry-session") return restoreSession();
+  if (data.action === "logout") {
+    await saveState();
+    await fetch("/api/auth/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    account = null;
+    state = createEmptyState();
+    isAuthenticated = false;
+    route();
+    return;
+  }
   if (data.task !== undefined) state.tasks[data.task].done = !state.tasks[data.task].done;
   else if (data.milestone !== undefined) state.milestones[data.milestone].done = !state.milestones[data.milestone].done;
   else if (data.like !== undefined) state.notes[data.like].liked = !state.notes[data.like].liked;
@@ -623,17 +640,22 @@ document.addEventListener("submit", async event => {
     const submit = form.querySelector('[type="submit"]');
     if (submit.disabled) return;
     const input = form.elements.nickname;
+    const passwordInput = form.elements.password;
     const feedback = form.querySelector("#nickname-error");
     feedback.hidden = true;
     input.removeAttribute("aria-invalid");
+    passwordInput.removeAttribute("aria-invalid");
     submit.disabled = true;
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nickname: data.get("nickname") }),
+        body: JSON.stringify({ nickname: data.get("nickname"), password: data.get("password") }),
       });
-      if (response.status === 400 || response.status === 409) input.setAttribute("aria-invalid", "true");
+      if ([400, 401, 409].includes(response.status)) {
+        input.setAttribute("aria-invalid", "true");
+        passwordInput.setAttribute("aria-invalid", "true");
+      }
       const result = await readApiResponse(response, "暂时无法使用这个昵称。");
       await loadPersonalSpace(result.user);
       activeRoute = "home";
@@ -643,8 +665,27 @@ document.addEventListener("submit", async event => {
     } catch (error) {
       feedback.textContent = error instanceof TypeError ? "暂时无法连接，请检查网络后重试。" : error.message;
       feedback.hidden = false;
-      input.focus();
+      if (error.message.includes("昵称已存在或密码错误")) passwordInput.focus();
+      else input.focus();
     } finally {
+      submit.disabled = false;
+    }
+    return;
+  }
+  if (key === "password-setup") {
+    const submit = form.querySelector('[type="submit"]');
+    submit.disabled = true;
+    try {
+      await readApiResponse(await fetch("/api/auth/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: data.get("password") }),
+      }), "暂时无法设置密码。");
+      account.password_set = 1;
+      render();
+      notify("登录密码已设置");
+    } catch (error) {
+      notify(error instanceof TypeError ? "暂时无法连接，请稍后重试。" : error.message);
       submit.disabled = false;
     }
     return;
