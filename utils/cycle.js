@@ -1,3 +1,6 @@
+(function (root) {
+"use strict";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function dateKey(value) {
@@ -90,4 +93,5 @@ function savePeriodEnd(value, end) {
 const cycleHelpers = { dateKey, dayDistance, normalizeCycle, cycleSummary, savePeriodStart, savePeriodEnd };
 
 if (typeof module !== "undefined" && module.exports) module.exports = cycleHelpers;
-if (typeof window !== "undefined") window.BloomCycle = cycleHelpers;
+root.BloomCycle = cycleHelpers;
+})(typeof globalThis !== "undefined" ? globalThis : this);
