@@ -19,6 +19,7 @@ Page({
   onLoad(options) {
     this.kind = moduleTitles[options.module] ? options.module : "todo";
     this.category = options.category || "";
+    this.setData({ kind: this.kind, category: this.category });
     this.refreshView();
   },
 
