@@ -250,3 +250,23 @@ small { color: var(--muted); }
   .tile { padding-inline: 8px; }
   .tile .pill { padding-inline: 5px; font-size: 10px; }
 }
+.daily-date-panel { margin-bottom: 18px; padding: 12px; border-radius: 20px; background: #f7eee8; }
+.daily-date-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 4px; border-radius: 30px; background: #eee2da; }
+.daily-date-tabs button { padding: 8px; border-radius: 28px; color: #745d53; font-size: 13px; }
+.daily-date-tabs button[aria-pressed="true"] { background: #fffdfa; color: #894838; font-weight: 700; box-shadow: 0 2px 7px #4a2f2310; }
+.daily-selected-date { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 4px 2px; }
+.daily-selected-date strong, .daily-selected-date small { display: block; }
+.daily-selected-date strong { font-size: 15px; }
+.daily-selected-date small { margin-top: 4px; color: #806f68; }
+.daily-selected-date button { flex: none; padding: 6px 9px; border-radius: 30px; background: #f8ded6; color: #894838; font-size: 11px; }
+.daily-calendar { padding: 8px 0 0; }
+.daily-calendar-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 5px 10px; }
+.daily-calendar-heading button { width: 36px; height: 36px; color: #894838; font-size: 26px; }
+.daily-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px 0; text-align: center; }
+.daily-calendar-grid small { padding: 5px 0; color: #806f68; }
+.daily-calendar-day { position: relative; width: 34px; height: 34px; margin: auto; border-radius: 50%; font-size: 13px; }
+.daily-calendar-day.today { outline: 1px solid #894838; color: #894838; }
+.daily-calendar-day.selected { background: #894838; color: white; }
+.daily-calendar-day i { position: absolute; bottom: 2px; left: 15px; width: 4px; height: 4px; border-radius: 50%; background: #789381; }
+.daily-calendar-day.selected i { background: white; }
+.daily-calendar-help { display: block; padding-top: 10px; color: #806f68; font-size: 11px; text-align: center; }

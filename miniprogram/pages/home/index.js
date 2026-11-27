@@ -1,4 +1,5 @@
-const { cycleSummary, dateKey } = require("../../utils/cycle");
+const { cycleSummary } = require("../../utils/cycle");
+const { dateKey, ensureDailyRecords, getDailyRecord, allNotes } = require("../../utils/daily");
 
 Page({
   data: { nickname: "", avatarText: "✿", todayLabel: "", empty: true, taskCount: 0, noteCount: 0, latestNote: "", cycleSummary: {}, cycleStatus: "", cycleForecast: "", cycleTile: "", search: "", modules: [], visibleModules: [] },
@@ -11,6 +12,11 @@ Page({
       return;
     }
     const state = app.globalData.state || {};
+    ensureDailyRecords(state);
+    const records = Object.values(state.dailyRecords || {});
+    const notes = allNotes(state);
+    const mealCount = records.reduce((count, record) => count + (record.meals?.length || 0), 0);
+    const todayRecord = getDailyRecord(state, dateKey());
     const summary = cycleSummary(state.cycle);
     const days = summary.daysUntilNext;
     const cycleForecast = days === null
@@ -24,10 +30,10 @@ Page({
       nickname,
       avatarText: Array.from(nickname)[0],
       todayLabel: `${date.getMonth() + 1}月${date.getDate()}日 · ${["星期日","星期一","星期二","星期三","星期四","星期五","星期六"][date.getDay()]}`,
-      empty: !Boolean(state.tasks?.length || state.schedule?.length || state.items?.length || state.notes?.length || state.meals?.length || state.mood != null || state.milestones?.length || summary.last),
+      empty: !Boolean(state.tasks?.length || state.items?.length || notes.length || mealCount || todayRecord.mood != null || state.milestones?.length || summary.last),
       taskCount: state.tasks?.length || 0,
-      noteCount: state.notes?.length || 0,
-      latestNote: state.notes?.[0]?.text || "",
+      noteCount: notes.length,
+      latestNote: notes[0]?.text || "",
       cycleSummary: summary,
       cycleStatus: summary.last?.end ? `第 ${summary.daysSinceEnd} 天` : summary.last ? `本次第 ${summary.currentPeriodDay} 天` : "",
       cycleForecast,
@@ -39,15 +45,19 @@ Page({
 
   moduleCards(state) {
     const summary = cycleSummary(state.cycle);
+    const records = Object.values(state.dailyRecords || {});
+    const mealCount = records.reduce((count, record) => count + (record.meals?.length || 0), 0);
+    const noteCount = records.reduce((count, record) => count + (record.notes?.length || 0), 0);
+    const scheduleCount = records.reduce((count, record) => count + (record.schedule?.length || 0), 0);
     return [
       { id: "todo", title: "今日待办", description: `${state.tasks?.length || 0} 项待办`, icon: "✓", tone: "mint" },
-      { id: "plan", title: "一日时间规划", description: `${state.schedule?.length || 0} 段安排`, icon: "◷", tone: "mint" },
+      { id: "plan", title: "一日时间规划", description: `${scheduleCount} 段安排`, icon: "◷", tone: "mint" },
       { id: "storage", title: "收纳与物品", description: `${state.items?.length || 0} 件物品`, icon: "▤", tone: "rose" },
       { id: "cycle", title: "经期与周期", description: summary.last ? `距上次结束 ${summary.daysSinceEnd ?? "—"} 天` : "记录身体节律", icon: "♡", tone: "coral" },
-      { id: "meals", title: "手账食记", description: `${state.meals?.length || 0} 条餐食`, icon: "⌂", tone: "rose" },
-      { id: "mood", title: "情绪日记", description: state.mood == null ? "记录今天的心情" : "已记录今天的心情", icon: "☼", tone: "mint" },
+      { id: "meals", title: "手账食记", description: `${mealCount} 条餐食`, icon: "⌂", tone: "rose" },
+      { id: "mood", title: "情绪日记", description: getDailyRecord(state, dateKey()).mood == null ? "记录今天的心情" : "已记录今天的心情", icon: "☼", tone: "mint" },
       { id: "growth", title: "成就与成长", description: `${state.milestones?.length || 0} 个里程碑`, icon: "✧", tone: "rose" },
-      { id: "notes", title: "随心记事", description: `${state.notes?.length || 0} 条手记`, icon: "✎", tone: "mint" },
+      { id: "notes", title: "随心记事", description: `${noteCount} 条手记`, icon: "✎", tone: "mint" },
     ];
   },
 
@@ -81,7 +91,8 @@ Page({
       const text = (result.content || "").trim();
       if (!result.confirm || !text) return;
       const app = getApp();
-      app.globalData.state.notes = [{ text, date: dateKey() }, ...(app.globalData.state.notes || [])];
+      const record = getDailyRecord(app.globalData.state, dateKey());
+      record.notes.unshift({ text, date: `${dateKey()} ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}` });
       try { await app.saveState(); this.onShow(); }
       catch (error) { wx.showToast({ title: error.message || "保存失败", icon: "none" }); }
     }});

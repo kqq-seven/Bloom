@@ -2,7 +2,18 @@
   <view class="eyebrow">BLOOM YOUR SPACE</view>
   <view class="page-title">{{title}}</view>
 
-  <block wx:if="{{kind === 'todo'}}">
+  <view wx:if="{{usesDailyCalendar}}" class="daily-date-panel">
+    <view class="date-tabs"><view class="date-tab {{!calendarMode && selectedDate == today ? 'date-tab-active' : ''}}" bindtap="selectToday">记录当天</view><view class="date-tab {{calendarMode || selectedDate != today ? 'date-tab-active' : ''}}" bindtap="showCalendar">查询记录</view></view>
+    <view wx:if="{{!calendarMode}}" class="selected-date-row"><view><text class="selected-date">{{selectedDateLabel}}</text><text class="muted">{{selectedDate == today ? '记录今天的内容' : '查看或补充这一天的记录'}}</text></view><text wx:if="{{selectedDate != today}}" class="today-link" bindtap="selectToday">回到今天</text></view>
+    <view wx:else class="calendar-card">
+      <view class="calendar-month"><text class="month-arrow" bindtap="previousCalendarMonth">‹</text><text>{{calendarLabel}}</text><text class="month-arrow" bindtap="nextCalendarMonth">›</text></view>
+      <view class="calendar-grid"><text wx:for="{{weekDays}}" wx:key="*this" class="weekday">{{item}}</text><view wx:for="{{calendarDays}}" wx:key="key" class="calendar-cell {{item.blank ? 'calendar-blank' : ''}} {{item.selected ? 'calendar-selected' : ''}} {{item.today ? 'calendar-today' : ''}}" data-date="{{item.value}}" bindtap="selectCalendarDay"><text wx:if="{{!item.blank}}">{{item.day}}</text><view wx:if="{{item.recorded}}" class="calendar-dot"></view></view></view>
+      <text class="calendar-help">有圆点的日期已记录内容，点击日期查看或继续记录。</text>
+    </view>
+  </view>
+
+  <block wx:if="{{calendarMode && usesDailyCalendar}}"></block>
+  <block wx:elif="{{kind === 'todo'}}">
     <view class="card"><view class="row between"><text class="section-heading">今日进展</text><text class="brand">{{doneCount}} / {{tasks.length}} 项完成</text></view><view class="progress-track"><view class="progress-fill" style="width: {{progress}}%"></view></view></view>
     <view wx:for="{{tasks}}" wx:key="index" class="card task-row" data-index="{{item.index}}" bindtap="toggleTask"><view class="task-check {{item.done ? 'checked' : ''}}">{{item.done ? '✓' : ''}}</view><view class="grow"><text class="item-title">{{item.name}}</text><text class="muted">{{item.tag || '今日待办'}} {{item.time}}</text></view></view>
     <view wx:if="{{!tasks.length}}" class="card empty-card"><text class="item-title">清单还是空的</text><text class="muted">添加第一件今天想完成的事。</text></view>
@@ -10,7 +21,7 @@
   </block>
 
   <block wx:elif="{{kind === 'plan'}}">
-    <view class="soft-card"><text class="eyebrow">今天</text><text class="section-heading">按自己的节奏安排时间</text></view><view class="section-title">今日时间线</view>
+    <view class="soft-card"><text class="eyebrow">{{selectedDateLabel}}</text><text class="section-heading">按自己的节奏安排时间</text></view><view class="section-title">时间安排</view>
     <view wx:for="{{schedule}}" wx:key="index" class="card schedule-row"><text class="pill pill-mint">{{item.time}}</text><view class="grow"><text class="item-title">{{item.name}}</text><text class="muted">{{item.detail}}</text></view></view>
     <view wx:if="{{!schedule.length}}" class="card empty-card"><text class="muted">还没有时间安排，添加一段适合自己的时间。</text></view><button class="primary add-button" data-type="time" bindtap="addEntry">＋ 添加时间块</button>
   </block>
@@ -29,16 +40,16 @@
   </block>
 
   <block wx:elif="{{kind === 'meals'}}">
-    <view class="card overview-card"><text class="muted">今天的餐食</text><text class="calorie-total">{{totalCalories}} <text class="muted">kcal</text></text></view>
+    <view class="card overview-card"><text class="muted">{{selectedDateLabel}} 的餐食</text><text class="calorie-total">{{totalCalories}} <text class="muted">kcal</text></text></view>
     <view wx:for="{{meals}}" wx:key="index" class="card meal-card"><view class="row between"><text class="item-title">{{item.name}}</text><text class="muted">{{item.time}}</text></view><image wx:if="{{item.photo}}" class="meal-photo" src="{{item.photo}}" mode="aspectFill" />
       <view wx:for="{{item.lines}}" wx:for-item="line" wx:for-index="lineIndex" wx:key="lineIndex" class="row between meal-line"><text>{{line[0]}}</text><text class="brand">{{line[1]}} kcal</text></view><text wx:if="{{!item.lines.length}}" class="muted">未填写餐食明细</text>
-    </view><view wx:if="{{!meals.length}}" class="card empty-card"><text class="muted">今天还没有餐食记录，添加第一餐吧。</text></view><button class="primary add-button" data-type="meal" bindtap="addEntry">＋ 记录餐食</button>
+    </view><view wx:if="{{!meals.length}}" class="card empty-card"><text class="muted">这一天还没有餐食记录，添加第一餐吧。</text></view><button class="primary add-button" data-type="meal" bindtap="addEntry">＋ 记录餐食</button>
   </block>
 
   <block wx:elif="{{kind === 'mood'}}">
-    <view class="card"><text class="section-heading">今天的情绪天气</text><view class="mood-grid"><view wx:for="{{moods}}" wx:key="index" class="mood-option {{item.selected ? 'mood-selected' : ''}}" data-index="{{item.index}}" bindtap="selectMood"><text>{{item.label}}</text></view></view><text wx:if="{{mood !== null}}" class="muted energy-label">今日能量 {{moods[mood].energy}}%</text></view>
-    <view class="card"><text class="section-heading">是什么温暖了今天</text><view class="moment-grid"><text wx:for="{{moments}}" wx:key="index" class="moment-tag {{item.selected ? 'moment-selected' : ''}}" data-index="{{item.index}}" bindtap="toggleMoment">{{item.label}}</text></view></view>
-    <view class="card journal-card"><text class="section-heading">三行微确幸</text><textarea wx:for="{{journal}}" wx:key="index" class="journal-input" data-index="{{index}}" value="{{item}}" maxlength="240" placeholder="写下一件今天的小确幸…" bindinput="onJournalInput" /></view><button class="primary add-button" bindtap="saveMood">保存今天的心情</button>
+    <view class="card"><text class="section-heading">{{selectedDateLabel}} · 情绪天气</text><view class="mood-grid"><view wx:for="{{moods}}" wx:key="index" class="mood-option {{item.selected ? 'mood-selected' : ''}}" data-index="{{item.index}}" bindtap="selectMood"><text>{{item.label}}</text></view></view><text wx:if="{{mood != null}}" class="muted energy-label">当日能量 {{moods[mood].energy}}%</text></view>
+    <view class="card"><text class="section-heading">是什么温暖了这一天</text><view class="moment-grid"><text wx:for="{{moments}}" wx:key="index" class="moment-tag {{item.selected ? 'moment-selected' : ''}}" data-index="{{item.index}}" bindtap="toggleMoment">{{item.label}}</text></view></view>
+    <view class="card journal-card"><text class="section-heading">三行微确幸</text><textarea wx:for="{{journal}}" wx:key="index" class="journal-input" data-index="{{index}}" value="{{item}}" maxlength="240" placeholder="写下这一天的小确幸…" bindinput="onJournalInput" /></view><button class="primary add-button" bindtap="saveMood">保存这一天的心情</button>
   </block>
 
   <block wx:elif="{{kind === 'growth'}}">

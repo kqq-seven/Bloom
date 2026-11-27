@@ -10,7 +10,7 @@ Page({
       avatarText: Array.from(name)[0] || "✿",
       passwordSet: Boolean(app.globalData.user?.password_set),
       stats: {
-        notes: state.notes?.length || 0,
+        notes: Object.values(state.dailyRecords || {}).reduce((count, record) => count + (record.notes?.length || 0), 0),
         milestones: (state.milestones || []).filter(item => item.done).length,
         tasks: (state.tasks || []).filter(item => item.done).length,
       },

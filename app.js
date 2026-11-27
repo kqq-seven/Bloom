@@ -4,6 +4,7 @@ const app = document.querySelector("#app");
 const sheet = document.querySelector("#sheet");
 const toast = document.querySelector("#toast");
 const { dateKey, dayDistance, normalizeCycle, cycleSummary, savePeriodStart, savePeriodEnd } = window.BloomCycle;
+const { ensureDailyRecords, getDailyRecord, hasEntries, allNotes } = window.BloomDaily;
 
 const modules = [
   { id: "todo", title: "今日待办", detail: "从一件重要小事开始", foot: "添加待办", tone: "" },
@@ -34,7 +35,7 @@ const warmMoments = [
 
 const createEmptyState = () => ({
   tasks: [], schedule: [], items: [], notes: [], meals: [], mood: null,
-  moments: [], journal: ["", "", ""], cycle: { start: "", end: "", reminder: false, history: [] }, milestones: [],
+  moments: [], journal: ["", "", ""], dailyRecords: {}, dailyRecordsInitialized: true, cycle: { start: "", end: "", reminder: false, history: [] }, milestones: [],
 });
 
 let account = null;
@@ -43,12 +44,16 @@ let isAuthenticated = false;
 let restoringSession = true;
 let sessionError = "";
 let stateSaveTimer;
+let stateSaveQueue = Promise.resolve();
 let stateSaveMessage = "";
 let activeRoute = "";
 let filter = "全部";
 let inventorySort = false;
 let month = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let chosenDay = new Date().toISOString().slice(0, 10);
+let selectedDailyDate = window.BloomDaily.dateKey();
+let dailyCalendarMode = false;
+let dailyCalendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let toastTimer;
 
 const escapeText = (value) => String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -70,6 +75,30 @@ function photo(name, className = "list-photo") {
 
 function pill(label, tone = "") {
   return `<span class="pill ${tone}">${escapeText(label)}</span>`;
+}
+
+function dailyRecord(date = selectedDailyDate) {
+  return getDailyRecord(state, date);
+}
+
+function formatDailyDate(date) {
+  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "full" }).format(new Date(`${date}T12:00:00`));
+}
+
+function dailyDatePanel() {
+  const today = window.BloomDaily.dateKey();
+  const year = dailyCalendarMonth.getFullYear();
+  const monthIndex = dailyCalendarMonth.getMonth();
+  const offset = new Date(year, monthIndex, 1).getDay();
+  const count = new Date(year, monthIndex + 1, 0).getDate();
+  const weekdays = "日一二三四五六".split("");
+  const days = Array.from({ length: count }, (_, index) => {
+    const date = window.BloomDaily.dateKey(new Date(year, monthIndex, index + 1));
+    const recorded = hasEntries(state.dailyRecords?.[date], activeRoute);
+    return `<button class="daily-calendar-day${date === selectedDailyDate ? " selected" : ""}${date === today ? " today" : ""}" data-action="daily-select" data-day="${date}" aria-pressed="${date === selectedDailyDate}">${index + 1}${recorded ? "<i></i>" : ""}</button>`;
+  }).join("");
+  const calendar = `<div class="daily-calendar"><div class="daily-calendar-heading"><button type="button" data-action="daily-month" data-step="-1" aria-label="上个月">‹</button><strong>${year}年 ${monthIndex + 1}月</strong><button type="button" data-action="daily-month" data-step="1" aria-label="下个月">›</button></div><div class="daily-calendar-grid">${weekdays.map(day => `<small>${day}</small>`).join("")}${"<span></span>".repeat(offset)}${days}</div><small class="daily-calendar-help">圆点表示这一天已有记录，点击日期即可查看或继续记录。</small></div>`;
+  return `<section class="daily-date-panel"><div class="daily-date-tabs"><button type="button" data-action="daily-mode" data-mode="record" aria-pressed="${!dailyCalendarMode && selectedDailyDate === today}">记录当天</button><button type="button" data-action="daily-mode" data-mode="calendar" aria-pressed="${dailyCalendarMode || selectedDailyDate !== today}">查询记录</button></div>${dailyCalendarMode ? calendar : `<div class="daily-selected-date"><div><strong>${escapeText(formatDailyDate(selectedDailyDate))}</strong><small>${selectedDailyDate === today ? "记录今天的内容" : "查看或补充这一天的记录"}</small></div>${selectedDailyDate === today ? "" : '<button type="button" data-action="daily-today">回到今天</button>'}</div>`}</section>`;
 }
 
 function iconButton(label, content, attributes) {
@@ -134,10 +163,14 @@ function login() {
 
 function home() {
   const cycleInfo = cycleSummary(state.cycle);
+  const dailyRecords = Object.values(state.dailyRecords || {});
+  const dailyNotes = allNotes(state);
+  const dailyMealCount = dailyRecords.reduce((count, record) => count + (record.meals?.length || 0), 0);
+  const todayRecord = dailyRecord(window.BloomDaily.dateKey());
   const todayModules = modules.map(item => {
     if (item.id === "todo" && state.tasks.length) return { ...item, badge: `${state.tasks.filter(task => task.done).length}/${state.tasks.length} 件` };
-    if (item.id === "mood" && state.mood !== null) return { ...item, badge: weather[state.mood][1] };
-    if (item.id === "meals" && state.meals.length) return { ...item, badge: `${state.meals.length} 餐` };
+    if (item.id === "mood" && todayRecord.mood !== null) return { ...item, badge: weather[todayRecord.mood][1] };
+    if (item.id === "meals" && dailyMealCount) return { ...item, badge: `${dailyMealCount} 餐` };
     if (item.id === "storage") return { ...item, badge: `${state.items.length} 件` };
     return item;
   });
@@ -149,11 +182,11 @@ function home() {
         ${iconButton("搜索空间", glyph("search"), 'data-open="search"')}
         ${iconButton("查看全部空间", glyph("tune"), 'data-open="spaces"')}
       </section>
-      ${!state.tasks.length && !state.items.length && !state.notes.length ? `<section class="empty-start"><span class="empty-start-mark">✿</span><h2>这里是属于你的空间</h2><p>从一件物品、一条待办或一段手记开始，慢慢添上自己的生活。</p><button class="primary" data-open="quick-note">写下第一条记录</button></section>` : ""}
+      ${!state.tasks.length && !state.items.length && !dailyNotes.length ? `<section class="empty-start"><span class="empty-start-mark">✿</span><h2>这里是属于你的空间</h2><p>从一件物品、一条待办或一段手记开始，慢慢添上自己的生活。</p><button class="primary" data-open="quick-note">写下第一条记录</button></section>` : ""}
       ${cycleInfo.last ? `<a class="alert urgent" href="#cycle"><span class="alert-icon">♡</span><div><strong>${cycleInfo.last.end ? "距上次经期结束" : "本次经期进行中"}</strong>${pill(cycleInfo.last.end ? `第 ${cycleInfo.daysSinceEnd} 天` : `第 ${cycleInfo.currentPeriodDay} 天`)}<p>${cycleInfo.daysUntilNext === null ? "再记录一次经期开始日，即可生成个人周期估算。" : cycleInfo.daysUntilNext > 0 ? `按你的记录，预计约 ${cycleInfo.daysUntilNext} 天后来经。` : cycleInfo.daysUntilNext === 0 ? "按你的记录，预计今天来经。" : `预计日期已过 ${Math.abs(cycleInfo.daysUntilNext)} 天，记录新周期可更新估算。`}</p></div><span class="arrow">›</span></a>` : ""}
       <div class="section-title"><h2><span class="brand" aria-hidden="true">⊞</span> 我的空间</h2><small>内容由你添加</small></div>
       <div class="grid">${todayModules.map(tile).join("")}</div>
-      ${state.notes.length ? `<aside class="quote"><small>我的手记</small><blockquote>${escapeText(state.notes[0].text || "照片记录")}</blockquote></aside>` : ""}
+      ${dailyNotes.length ? `<aside class="quote"><small>我的手记</small><blockquote>${escapeText(dailyNotes[0].text || "照片记录")}</blockquote></aside>` : ""}
       ${state.items.length ? "" : mainButton("添加第一件物品", 'data-open="item"')}
     </main>${nav("home")}`;
 }
@@ -302,30 +335,34 @@ function cycle() {
 }
 
 function mood() {
-  const charge = state.mood === null ? null : [85, 95, 60, 40, 50][state.mood];
+  const record = dailyRecord();
+  const charge = record.mood === null ? null : [85, 95, 60, 40, 50][record.mood];
   return `${topbar("New Journal Entry", { serif: true, sub: "情绪手账 · MOOD JOURNAL" })}
     <main class="page stack">
-      <section class="section-intro"><p class="eyebrow">我的情绪记录</p><h1 class="serif">${new Intl.DateTimeFormat("zh-CN", { dateStyle: "full" }).format(new Date())}</h1></section>
-      <section class="soft"><div class="row split"><h2>☁ 今日情绪天气</h2><small>TAP TO SELECT</small></div>
-        <div class="mood-grid">${weather.map(([symbol, label], idx) => `<button type="button" data-mood="${idx}" aria-pressed="${state.mood === idx}"><span class="weather" aria-hidden="true">${symbol}</span>${label}</button>`).join("")}</div>
-        ${charge === null ? "" : `<div class="card row split"><strong>今日心情</strong><span class="positive">${charge}% · ${weather[state.mood][1]}</span></div>`}
+      ${dailyDatePanel()}
+      <section class="section-intro"><p class="eyebrow">我的情绪记录</p><h1 class="serif">${escapeText(formatDailyDate(selectedDailyDate))}</h1></section>
+      <section class="soft"><div class="row split"><h2>☁ 当日情绪天气</h2><small>TAP TO SELECT</small></div>
+        <div class="mood-grid">${weather.map(([symbol, label], idx) => `<button type="button" data-mood="${idx}" aria-pressed="${record.mood === idx}"><span class="weather" aria-hidden="true">${symbol}</span>${label}</button>`).join("")}</div>
+        ${charge === null ? "" : `<div class="card row split"><strong>当日心情</strong><span class="positive">${charge}% · ${weather[record.mood][1]}</span></div>`}
       </section>
-      <section class="soft"><div class="row split"><h2>微光滋养 · 是什么温暖了今天</h2><small>已选 ${state.moments.length} 项</small></div>
-        <div class="mood-tags">${warmMoments.map((label, idx) => `<button class="pill" type="button" data-moment="${idx}" aria-pressed="${state.moments.includes(idx)}">${label}</button>`).join("")}</div></section>
-      <section class="card"><h2>三行微确幸 · 拾光便笺</h2><div class="journal-lines">${state.journal.map((line, index) =>
+      <section class="soft"><div class="row split"><h2>微光滋养 · 是什么温暖了这一天</h2><small>已选 ${record.moments.length} 项</small></div>
+        <div class="mood-tags">${warmMoments.map((label, idx) => `<button class="pill" type="button" data-moment="${idx}" aria-pressed="${record.moments.includes(idx)}">${label}</button>`).join("")}</div></section>
+      <section class="card"><h2>三行微确幸 · 拾光便笺</h2><div class="journal-lines">${record.journal.map((line, index) =>
         `<label>${pill(index + 1, "rose")}<textarea aria-label="第 ${index + 1} 行便笺" data-line="${index}" maxlength="240">${escapeText(line)}</textarea></label>`).join("")}</div></section>
-      ${state.mood !== null || state.journal.some(Boolean) || state.moments.length ? mainButton("保存今天的心情", 'data-action="save-mood"', "") : `<p class="subtext">选一种心情，或写下今天的感受。</p>`}
+      ${record.mood !== null || record.journal.some(Boolean) || record.moments.length ? mainButton("保存这一天的心情", 'data-action="save-mood"', "") : `<p class="subtext">选一种心情，或写下这一天的感受。</p>`}
     </main>`;
 }
 
 function meals() {
+  const record = dailyRecord();
   const calories = meal => meal.lines.reduce((total, line) => total + line[1], 0);
-  const total = state.meals.reduce((sum, meal) => sum + calories(meal), 0);
+  const total = record.meals.reduce((sum, meal) => sum + calories(meal), 0);
   return `${topbar("手账食记", { serif: true, sub: "DAILY JOURNAL · 一日三餐" })}
     <main class="page">
+      ${dailyDatePanel()}
       <section class="card stack">
-        <div class="row split"><h2 class="serif">${new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date())}</h2><small>今日食记</small></div>
-        ${state.meals.map((meal, index) => meal.snack
+        <div class="row split"><h2 class="serif">${escapeText(formatDailyDate(selectedDailyDate))}</h2><small>当日食记</small></div>
+        ${record.meals.map((meal, index) => meal.snack
           ? `<article class="soft row split"><div><strong>${escapeText(meal.name)} · ${escapeText(meal.lines[0][0])}</strong><p class="subtext">${escapeText(meal.detail)}</p></div><strong class="brand">+${calories(meal)} kcal</strong></article>`
           : `<article class="soft meal-card stack">
             <div class="row split"><h2>${meal.name}</h2><small>${meal.time}</small></div>
@@ -335,7 +372,7 @@ function meals() {
                 <div class="meal-items">${meal.lines.map(([name, kcal]) => `<p class="row split subtext"><span>${escapeText(name)}</span><span class="brand">~${kcal}</span></p>`).join("")}</div>
               </div>
             </div></article>`).join("")}
-        ${state.meals.length ? `<div class="soft row split"><div><h2>今日总热量</h2><small>DAILY TOTAL CALORIES</small></div><strong class="meal-amount serif">${total.toLocaleString("en-US")}<small> kcal</small></strong></div>` : `<div class="empty-state"><h2>今天还没有餐食记录</h2><p>添加第一餐，也可以附上照片与热量。</p></div>`}
+        ${record.meals.length ? `<div class="soft row split"><div><h2>当日总热量</h2><small>DAILY TOTAL CALORIES</small></div><strong class="meal-amount serif">${total.toLocaleString("en-US")}<small> kcal</small></strong></div>` : `<div class="empty-state"><h2>这一天还没有餐食记录</h2><p>可以补记一餐，也可以附上照片与热量。</p></div>`}
       </section>
       <button class="secondary main-action" data-open="meal">＋ 记录餐食</button>
     </main>`;
@@ -347,15 +384,17 @@ function photoPicker() {
 }
 
 function notes() {
+  const record = dailyRecord();
   return `${topbar('<span class="wordmark">Bloom</span> · Inspiration Notes', { serif: true })}
     <main class="page stack">
+      ${dailyDatePanel()}
       <section><h1 class="brand" style="font-size:21px">随心记事 · 随手拍与日常</h1><p class="subtext">定格眼前的微光，写下当下的小心意。</p></section>
-      <form class="card note-composer" data-form="note"><div class="row split"><strong class="brand">● 今日随手记</strong><small>随时随刻 · 纯粹记录</small></div>
+      <form class="card note-composer" data-form="note"><div class="row split"><strong class="brand">● ${escapeText(selectedDailyDate)} 的随手记</strong><small>随时随刻 · 纯粹记录</small></div>
         ${photoPicker()}<textarea name="text" maxlength="500" aria-label="随手记" placeholder="放下此刻想写的话，不用工整，随心就好…"></textarea>
         <div class="row split"><span class="muted" aria-hidden="true">♧ ☺</span><button class="primary" type="submit">✓ 留存此刻</button></div>
       </form>
       <div class="section-title"><h2>随手手账流</h2><small>纯粹时刻 · 真实生活</small></div>
-      ${state.notes.length ? state.notes.map((entry, index) => `<article class="card note-entry">
+      ${record.notes.length ? record.notes.map((entry, index) => `<article class="card note-entry">
         ${photo(entry.photo)}<p>${escapeText(entry.text)}</p>
         <div class="row split" style="margin-top:8px"><div class="row"><small>${escapeText(entry.date)}</small>${pill(entry.tag || "随手记", "mint")}</div>
           <button type="button" class="like" data-like="${index}" aria-label="收藏这条手记" aria-pressed="${Boolean(entry.liked)}">${entry.liked ? "♥" : "♡"}</button></div>
@@ -365,11 +404,12 @@ function notes() {
 }
 
 function plan() {
-  const schedule = [...state.schedule].sort((a, b) => a.time.localeCompare(b.time));
+  const schedule = [...dailyRecord().schedule].sort((a, b) => a.time.localeCompare(b.time));
   return `${topbar("一日时间规划", { sub: "DAILY RHYTHM" })}
     <main class="page stack">
-      <section class="soft"><p class="eyebrow">${new Intl.DateTimeFormat("zh-CN", { dateStyle: "full" }).format(new Date())}</p><h1>一日时间规划</h1><p class="subtext">按自己的节奏安排时间。</p></section>
-      <section class="stack"><h2>今日时间线</h2>${schedule.length ? schedule.map(block => `<div class="card row">
+      ${dailyDatePanel()}
+      <section class="soft"><p class="eyebrow">${escapeText(formatDailyDate(selectedDailyDate))}</p><h1>一日时间规划</h1><p class="subtext">按自己的节奏安排时间。</p></section>
+      <section class="stack"><h2>当日时间线</h2>${schedule.length ? schedule.map(block => `<div class="card row">
         <time class="pill mint">${escapeText(block.time)}</time><div><h3>${escapeText(block.name)}</h3><small>${escapeText(block.detail)}</small></div></div>`).join("") : '<div class="empty-state"><p>还没有时间安排，添加一段适合自己的时间。</p></div>'}</section>
       ${mainButton("＋ 添加时间块", 'data-open="time"', "")}
     </main>`;
@@ -390,9 +430,10 @@ function landing(id, title, choices) {
 }
 
 function profile() {
+  const allNotes = Object.values(state.dailyRecords || {}).flatMap(record => record.notes || []);
   return `${topbar('<span class="wordmark">Bloom</span> 我的', { home: true })}
     <main class="page with-nav stack"><section class="card row">${glyph("avatar")}<div><h1>${escapeText(account?.display_name || "朋友")}</h1></div></section>
-      <div class="stats"><div>手记<strong>${state.notes.length}</strong></div><div>里程碑<strong>${state.milestones.filter(item => item.done).length}</strong></div><div>完成待办<strong>${state.tasks.filter(item => item.done).length}</strong></div></div>
+      <div class="stats"><div>手记<strong>${allNotes.length}</strong></div><div>里程碑<strong>${state.milestones.filter(item => item.done).length}</strong></div><div>完成待办<strong>${state.tasks.filter(item => item.done).length}</strong></div></div>
       <div class="inventory-lines"><a href="#notes">我的手记 <span>›</span></a><a href="#growth">我的里程碑 <span>›</span></a><a href="#storage">我的收纳 <span>›</span></a></div>
       ${account?.password_set ? "" : `<form class="card auth-form" data-form="password-setup">
         <h2>设置登录密码</h2><p class="subtext">为之前已进入的昵称账号添加密码，之后可在其他设备登录。</p>
@@ -430,14 +471,21 @@ function persist(message) {
 async function saveState() {
   if (!account) return;
   clearTimeout(stateSaveTimer);
+  const body = JSON.stringify({ state });
+  const userId = account.id;
   try {
-    const response = await fetch("/api/state", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state }),
+    const pending = stateSaveQueue.catch(() => {}).then(async () => {
+      if (account?.id !== userId) throw new Error("账号已切换。");
+      const response = await fetch("/api/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "保存失败");
     });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "保存失败");
+    stateSaveQueue = pending;
+    await pending;
     if (stateSaveMessage) notify(stateSaveMessage);
     stateSaveMessage = "";
   } catch {
@@ -446,6 +494,11 @@ async function saveState() {
 }
 
 function render() {
+  if (isAuthenticated && dailyCalendarMode && ["plan", "mood", "meals", "notes"].includes(activeRoute)) {
+    const module = modules.find(item => item.id === activeRoute);
+    app.innerHTML = `${topbar(module.title)}<main class="page">${dailyDatePanel()}</main>`;
+    return;
+  }
   app.innerHTML = isAuthenticated ? routes[activeRoute]() : login();
 }
 
@@ -461,9 +514,15 @@ async function readApiResponse(response, fallback) {
 async function loadPersonalSpace(user) {
   const saved = await readApiResponse(await fetch("/api/state"), "个人数据无法读取。");
   const empty = createEmptyState();
-  state = { ...empty, ...saved.state, cycle: normalizeCycle(saved.state.cycle) };
+  state = { ...empty, ...saved.state, dailyRecords: saved.state?.dailyRecords || {}, dailyRecordsInitialized: Boolean(saved.state?.dailyRecordsInitialized), cycle: normalizeCycle(saved.state?.cycle) };
+  ensureDailyRecords(state);
   account = user;
   isAuthenticated = true;
+  if (!saved.state?.dailyRecordsInitialized) {
+    await readApiResponse(await fetch("/api/state", {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ state }),
+    }), "旧记录暂时无法迁移，请稍后重试。");
+  }
 }
 
 async function restoreSession() {
@@ -487,6 +546,11 @@ async function restoreSession() {
 function route() {
   const next = location.hash.slice(1);
   activeRoute = Object.hasOwn(routes, next) ? next : "home";
+  if (["plan", "mood", "meals", "notes"].includes(activeRoute)) {
+    selectedDailyDate = window.BloomDaily.dateKey();
+    dailyCalendarMode = false;
+    dailyCalendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  }
   filter = "全部";
   inventorySort = false;
   if (sheet.open) sheet.close();
@@ -503,6 +567,7 @@ function searchList(query = "") {
 }
 
 function openSheet(name, options) {
+  if (name === "quick-note" && activeRoute !== "notes") selectedDailyDate = window.BloomDaily.dateKey();
   const category = options.category || "clothes";
   const itemOptions = categories.map(item => `<option value="${item.id}"${item.id === category ? " selected" : ""}>${item.title}</option>`).join("");
   const cycleState = normalizeCycle(state.cycle);
@@ -576,7 +641,7 @@ document.addEventListener("input", event => {
     app.querySelector("#inventory-empty").hidden = cards.some(card => !card.hidden);
   }
   if (target.dataset.line !== undefined) {
-    state.journal[Number(target.dataset.line)] = target.value;
+    dailyRecord().journal[Number(target.dataset.line)] = target.value;
     persist();
   }
   if (target.dataset.action === "reminder") {
@@ -606,6 +671,26 @@ document.addEventListener("click", async event => {
   if (!button) return;
   const data = button.dataset;
   if (data.open) return openSheet(data.open, data);
+  if (data.action === "daily-mode") {
+    dailyCalendarMode = data.mode === "calendar";
+    if (!dailyCalendarMode) selectedDailyDate = window.BloomDaily.dateKey();
+    return render();
+  }
+  if (data.action === "daily-today") {
+    selectedDailyDate = window.BloomDaily.dateKey();
+    dailyCalendarMode = false;
+    dailyCalendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    return render();
+  }
+  if (data.action === "daily-month") {
+    dailyCalendarMonth = new Date(dailyCalendarMonth.getFullYear(), dailyCalendarMonth.getMonth() + Number(data.step), 1);
+    return render();
+  }
+  if (data.action === "daily-select") {
+    selectedDailyDate = data.day;
+    dailyCalendarMode = false;
+    return render();
+  }
   if (data.action === "close") return sheet.close();
   if (data.action === "retry-session") return restoreSession();
   if (data.action === "logout") {
@@ -619,7 +704,7 @@ document.addEventListener("click", async event => {
   }
   if (data.task !== undefined) state.tasks[data.task].done = !state.tasks[data.task].done;
   else if (data.milestone !== undefined) state.milestones[data.milestone].done = !state.milestones[data.milestone].done;
-  else if (data.like !== undefined) state.notes[data.like].liked = !state.notes[data.like].liked;
+  else if (data.like !== undefined) dailyRecord().notes[data.like].liked = !dailyRecord().notes[data.like].liked;
   else if (data.quantity !== undefined) {
     const item = state.items[data.quantity];
     item.count = Math.min(9999, Math.max(0, item.count + Number(data.step)));
@@ -635,16 +720,17 @@ document.addEventListener("click", async event => {
   } else if (data.day) {
     chosenDay = data.day;
     return render();
-  } else if (data.mood !== undefined) state.mood = Number(data.mood);
+  } else if (data.mood !== undefined) dailyRecord().mood = Number(data.mood);
   else if (data.moment !== undefined) {
     const index = Number(data.moment);
-    state.moments = state.moments.includes(index) ? state.moments.filter(moment => moment !== index) : [...state.moments, index];
+    const record = dailyRecord();
+    record.moments = record.moments.includes(index) ? record.moments.filter(moment => moment !== index) : [...record.moments, index];
   } else if (data.action === "save-mood") {
-    state.moodSaved = true;
-    return persist("今日情绪手账已封存");
+    dailyRecord().moodSaved = true;
+    return persist("这一天的心情已保存");
   } else if (data.action === "save-meals") {
-    state.mealSaved = true;
-    return persist("已保存到今日手账");
+    dailyRecord().mealSaved = true;
+    return persist("已保存到当日手账");
   } else return;
   persist();
   render();
@@ -713,21 +799,23 @@ document.addEventListener("submit", async event => {
   const name = String(data.get("name") || "").trim();
   const detail = String(data.get("detail") || "").trim();
   const text = String(data.get("text") || "").trim();
+  const formDate = selectedDailyDate;
   if (data.has("name") && !name) return notify("请填写名称");
   const submit = form.querySelector('[type="submit"]');
   submit.disabled = true;
   try {
     const picture = await readPhoto(data.get("photo"));
+    const daily = dailyRecord(formDate);
     if ((key === "note" || key === "quick-note") && !text && !picture) return notify("写下几句话，或选一张照片");
     if (key === "meal-photo" && !picture) return notify("请先选择照片");
 
     switch (key) {
       case "task": state.tasks.push({ name, tag: "随手记", time: "", done: false }); break;
-      case "time": state.schedule.push({ name, time: String(data.get("time")), detail }); break;
+      case "time": daily.schedule.push({ name, time: String(data.get("time")), detail }); break;
       case "milestone": state.milestones.push({ name, done: false }); break;
       case "note":
       case "quick-note":
-        state.notes.unshift({ text, photo: picture, date: new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date()) });
+        daily.notes.unshift({ text, photo: picture, date: `${formDate} ${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date())}` });
         break;
       case "item": {
         const category = String(data.get("category"));
@@ -739,7 +827,7 @@ document.addEventListener("submit", async event => {
       case "cycle-end": state.cycle = savePeriodEnd(state.cycle, String(data.get("date"))); break;
       case "meal": {
         const mealType = String(data.get("mealType"));
-        state.meals.push({
+        daily.meals.push({
           name: mealType,
           time: new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
           label: mealType,
@@ -747,7 +835,7 @@ document.addEventListener("submit", async event => {
         });
         break;
       }
-      case "meal-photo": state.meals[Number(data.get("index"))].photo = picture; break;
+      case "meal-photo": daily.meals[Number(data.get("index"))].photo = picture; break;
       default: return;
     }
 
@@ -763,5 +851,18 @@ document.addEventListener("submit", async event => {
 });
 
 window.addEventListener("hashchange", route);
+let lastToday = window.BloomDaily.dateKey();
+function refreshDailyDate() {
+  const today = window.BloomDaily.dateKey();
+  if (today === lastToday) return;
+  if (selectedDailyDate === lastToday) {
+    selectedDailyDate = today;
+    dailyCalendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  }
+  lastToday = today;
+  render();
+}
+window.addEventListener("focus", refreshDailyDate);
+setInterval(refreshDailyDate, 30000);
 route();
 restoreSession();

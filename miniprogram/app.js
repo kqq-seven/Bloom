@@ -1,4 +1,5 @@
 const { normalizeCycle } = require("./utils/cycle");
+const { ensureDailyRecords } = require("./utils/daily");
 
 App({
   globalData: {
@@ -49,8 +50,12 @@ App({
       const value = saved.state || {};
       this.globalData.state = {
         ...value,
+        dailyRecords: value.dailyRecords || {},
+        dailyRecordsInitialized: Boolean(value.dailyRecordsInitialized),
         cycle: normalizeCycle(value.cycle),
       };
+      ensureDailyRecords(this.globalData.state);
+      if (!value.dailyRecordsInitialized) await this.saveState();
       this.globalData.loadError = "";
       return true;
     } catch (error) {
@@ -76,17 +81,23 @@ App({
     wx.setStorageSync("bloom-mini-token", result.token);
     const saved = await this.request("/api/state");
     const value = saved.state || {};
-    this.globalData.state = { ...value, cycle: normalizeCycle(value.cycle) };
+    this.globalData.state = { ...value, dailyRecords: value.dailyRecords || {}, dailyRecordsInitialized: Boolean(value.dailyRecordsInitialized), cycle: normalizeCycle(value.cycle) };
+    ensureDailyRecords(this.globalData.state);
+    if (!value.dailyRecordsInitialized) await this.saveState();
     this.globalData.loadError = "";
     return result.user;
   },
 
   async saveState() {
-    if (!this.globalData.token || !this.globalData.state) return;
-    await this.request("/api/state", {
-      method: "PUT",
-      data: { state: this.globalData.state },
+    if (!this.globalData.token || !this.globalData.state) throw new Error("请重新登录后保存记录。");
+    const payload = JSON.parse(JSON.stringify(this.globalData.state));
+    const token = this.globalData.token;
+    const pending = (this.saveQueue || Promise.resolve()).catch(() => {}).then(() => {
+      if (this.globalData.token !== token) throw new Error("账号已切换，请重新打开记录。");
+      return this.request("/api/state", { method: "PUT", data: { state: payload } });
     });
+    this.saveQueue = pending;
+    await pending;
   },
 
   async signOut() {

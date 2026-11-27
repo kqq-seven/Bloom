@@ -1,4 +1,23 @@
 .page-title { margin: 10rpx 0 24rpx; font-size: 46rpx; font-weight: 700; }
+.daily-date-panel { margin: 0 0 20rpx; padding: 18rpx; border-radius: 22rpx; background: #f7eee8; }
+.date-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8rpx; padding: 6rpx; border-radius: 999rpx; background: #eee2da; }
+.date-tab { padding: 13rpx; border-radius: 999rpx; color: #745d53; text-align: center; font-size: 24rpx; }
+.date-tab-active { background: #fffdfa; color: #894838; font-weight: 700; box-shadow: 0 3rpx 10rpx rgba(74,47,35,.07); }
+.selected-date-row { display: flex; align-items: center; justify-content: space-between; gap: 15rpx; padding: 18rpx 8rpx 2rpx; }
+.selected-date { display: block; color: #302925; font-size: 27rpx; font-weight: 700; }
+.today-link { padding: 10rpx 14rpx; border-radius: 999rpx; background: #f8ded6; color: #894838; font-size: 22rpx; }
+.calendar-card { padding: 15rpx 4rpx 0; }
+.calendar-month { display: flex; justify-content: space-between; align-items: center; padding: 8rpx 18rpx 20rpx; font-weight: 700; }
+.month-arrow { padding: 4rpx 15rpx; color: #894838; font-size: 40rpx; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6rpx 0; text-align: center; }
+.weekday { padding: 7rpx 0; color: #806f68; font-size: 21rpx; }
+.calendar-cell { position: relative; display: grid; place-items: center; width: 58rpx; height: 58rpx; margin: auto; border-radius: 50%; font-size: 23rpx; }
+.calendar-blank { visibility: hidden; }
+.calendar-selected { background: #894838; color: #fff; }
+.calendar-today:not(.calendar-selected) { outline: 2rpx solid #894838; color: #894838; }
+.calendar-dot { position: absolute; bottom: 3rpx; width: 7rpx; height: 7rpx; border-radius: 50%; background: #789381; }
+.calendar-selected .calendar-dot { background: #fff; }
+.calendar-help { display: block; padding: 15rpx 12rpx 6rpx; color: #806f68; font-size: 21rpx; text-align: center; }
 .section-heading { display: block; margin-bottom: 14rpx; font-size: 30rpx; font-weight: 700; }
 .grow { flex: 1; min-width: 0; }
 .row { display: flex; align-items: center; gap: 18rpx; }
