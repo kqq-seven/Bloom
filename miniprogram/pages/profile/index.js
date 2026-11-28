@@ -12,7 +12,7 @@ Page({
       stats: {
         notes: Object.values(state.dailyRecords || {}).reduce((count, record) => count + (record.notes?.length || 0), 0),
         milestones: (state.milestones || []).filter(item => item.done).length,
-        tasks: (state.tasks || []).filter(item => item.done).length,
+        tasks: Object.values(state.dailyRecords || {}).flatMap(record => record.tasks || []).filter(item => item.done).length,
       },
     });
   },

@@ -54,8 +54,8 @@ App({
         dailyRecordsInitialized: Boolean(value.dailyRecordsInitialized),
         cycle: normalizeCycle(value.cycle),
       };
-      ensureDailyRecords(this.globalData.state);
-      if (!value.dailyRecordsInitialized) await this.saveState();
+      ensureDailyRecords(this.globalData.state, undefined, saved.updatedAt);
+      if (value.dailyRecordsVersion !== 2) await this.saveState();
       this.globalData.loadError = "";
       return true;
     } catch (error) {
@@ -82,8 +82,8 @@ App({
     const saved = await this.request("/api/state");
     const value = saved.state || {};
     this.globalData.state = { ...value, dailyRecords: value.dailyRecords || {}, dailyRecordsInitialized: Boolean(value.dailyRecordsInitialized), cycle: normalizeCycle(value.cycle) };
-    ensureDailyRecords(this.globalData.state);
-    if (!value.dailyRecordsInitialized) await this.saveState();
+    ensureDailyRecords(this.globalData.state, undefined, saved.updatedAt);
+    if (value.dailyRecordsVersion !== 2) await this.saveState();
     this.globalData.loadError = "";
     return result.user;
   },

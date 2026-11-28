@@ -193,7 +193,7 @@ class BloomHandler(SimpleHTTPRequestHandler):
                 return self.send_json(401, {"error": "请先登录"})
             with open_database() as connection:
                 row = execute(connection,
-                    "SELECT payload FROM user_state WHERE user_id = ?", (user["id"],)
+                    "SELECT payload, updated_at FROM user_state WHERE user_id = ?", (user["id"],)
                 ).fetchone()
             if not row:
                 return self.send_json(200, {"state": EMPTY_STATE})
@@ -201,7 +201,7 @@ class BloomHandler(SimpleHTTPRequestHandler):
                 state = json.loads(row["payload"])
             except json.JSONDecodeError:
                 return self.send_json(500, {"error": "个人数据无法读取"})
-            return self.send_json(200, {"state": state})
+            return self.send_json(200, {"state": state, "updatedAt": row["updated_at"]})
         return super().do_GET()
 
     def do_POST(self):

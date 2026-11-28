@@ -59,7 +59,7 @@ Page({
     ensureDailyRecords(state);
     const daily = getDailyRecord(state, this.data.selectedDate || dateKey());
     const category = categories.find(item => item.id === this.category);
-    const tasks = (state.tasks || []).map((item, index) => ({ ...item, index }));
+    const tasks = daily.tasks.map((item, index) => ({ ...item, index }));
     const schedule = [...daily.schedule].map((item, index) => ({ ...item, index })).sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")));
     const allItems = (state.items || []).map((item, index) => ({ ...item, index })).filter(item => !this.category || item.category === this.category);
     const filterValues = [...new Set(allItems.map(item => item.kind).filter(Boolean))];
@@ -89,7 +89,7 @@ Page({
       selectedDateLabel: this.dateLabel(this.data.selectedDate || dateKey()),
       calendarLabel: `${this.calendarYear}年${this.calendarMonth + 1}月`,
       calendarDays: this.makeCalendar(state),
-      usesDailyCalendar: ["plan", "mood", "notes", "meals"].includes(this.kind),
+      usesDailyCalendar: ["todo", "plan", "mood", "notes", "meals"].includes(this.kind),
       doneCount, progress: tasks.length ? Math.round(doneCount / tasks.length * 100) : 0,
     });
   },
@@ -130,6 +130,7 @@ Page({
   },
 
   addEntry(event) {
+    this.refreshToday();
     const type = event.currentTarget.dataset.type;
     const category = event.currentTarget.dataset.category || this.category || "clothes";
     wx.navigateTo({ url: `/pages/entry/index?type=${type}&category=${category}&date=${this.data.selectedDate}` });
@@ -142,7 +143,8 @@ Page({
   async toggleTask(event) {
     const state = getApp().globalData.state;
     const index = Number(event.currentTarget.dataset.index);
-    state.tasks[index].done = !state.tasks[index].done;
+    const tasks = getDailyRecord(state, this.data.selectedDate).tasks;
+    tasks[index].done = !tasks[index].done;
     await this.persist();
   },
 
@@ -197,7 +199,7 @@ Page({
         const photo = `data:image/jpeg;base64,${file.data}`;
         if (photo.length > 420000) return wx.showToast({ title: "图片太大，请换一张", icon: "none" });
         const record = getDailyRecord(getApp().globalData.state, selectedDate);
-        record.notes = [{ text: "", photo, date: selectedDate }, ...record.notes];
+        record.notes = [{ recordDate: selectedDate, text: "", photo, date: selectedDate }, ...record.notes];
         await this.persist("照片已保存");
       } });
     } });

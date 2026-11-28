@@ -1,7 +1,7 @@
 <view class="page-shell">
   <view class="eyebrow">BLOOM JOURNAL</view>
   <view class="page-title">{{title}}</view>
-  <view wx:if="{{type === 'time' || type === 'meal' || type === 'note'}}" class="entry-date">记录日期　{{selectedDate}}</view>
+  <view wx:if="{{type === 'task' || type === 'time' || type === 'meal' || type === 'note'}}" class="entry-date">记录日期　{{selectedDate}}</view>
   <form bindsubmit="submit">
     <block wx:if="{{type === 'task'}}">
       <text class="field-label">待办内容</text><input class="input" name="name" maxlength="100" placeholder="写下一件想完成的事" focus />

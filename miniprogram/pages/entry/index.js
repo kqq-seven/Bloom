@@ -6,7 +6,7 @@ const categoryOptions = [
 ];
 const mealOptions = ["早餐", "午餐", "晚餐", "加餐"];
 const titles = { task: "添加今日待办", time: "添加时间块", item: "添加收纳物品", meal: "记录餐食", note: "随心记事", milestone: "添加里程碑" };
-const { dateKey, getDailyRecord } = require("../../utils/daily");
+const { dateKey, validDay, getDailyRecord } = require("../../utils/daily");
 
 Page({
   data: { type: "task", title: "添加记录", categories: [], categoryNames: [], categoryIndex: 0, mealOptions, mealIndex: 0, time: "09:00", selectedDate: "", photoPath: "", photoData: "", busy: false },
@@ -16,7 +16,7 @@ Page({
     const index = Math.max(0, categoryOptions.findIndex(item => item.id === options.category));
     this.setData({
       type, title: titles[type], categories: categoryOptions, categoryNames: categoryOptions.map(item => item.title),
-      categoryIndex: index, mealOptions, selectedDate: /^\d{4}-\d{2}-\d{2}$/.test(options.date || "") ? options.date : dateKey(),
+      categoryIndex: index, mealOptions, selectedDate: validDay(options.date) ? options.date : dateKey(),
     });
   },
 
@@ -66,10 +66,10 @@ Page({
     const category = categoryOptions[this.data.categoryIndex];
     switch (type) {
       case "task":
-        state.tasks = [...(state.tasks || []), { name, tag: String(values.tag || "今日待办"), time: "", done: false }];
+        daily.tasks.push({ recordDate: this.data.selectedDate, name, tag: String(values.tag || "今日待办"), time: "", done: false });
         break;
       case "time":
-        daily.schedule.push({ name, time: String(values.time || this.data.time || "09:00"), detail: String(values.detail || "").trim() });
+        daily.schedule.push({ recordDate: this.data.selectedDate, name, time: String(values.time || this.data.time || "09:00"), detail: String(values.detail || "").trim() });
         break;
       case "item":
         state.items = [...(state.items || []), {
@@ -81,13 +81,13 @@ Page({
       case "meal": {
         const mealType = mealOptions[this.data.mealIndex];
         daily.meals.push({
-          name: mealType, time: new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(now),
+          recordDate: this.data.selectedDate, name: mealType, time: new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(now),
           label: mealType, lines: [[name, Number(values.kcal || 0)]], photo: this.data.photoData,
         });
         break;
       }
       case "note":
-        daily.notes.unshift({ text: name, photo: this.data.photoData, date: `${this.data.selectedDate} ${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(now)}` });
+        daily.notes.unshift({ recordDate: this.data.selectedDate, text: name, photo: this.data.photoData, date: `${this.data.selectedDate} ${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(now)}` });
         break;
       case "milestone":
         state.milestones = [...(state.milestones || []), { name, done: false }];
@@ -102,7 +102,7 @@ Page({
       setTimeout(() => wx.navigateBack(), 350);
     } catch (error) {
       switch (type) {
-        case "task": state.tasks.pop(); break;
+        case "task": daily.tasks.pop(); break;
         case "time": daily.schedule.pop(); break;
         case "item": state.items.pop(); break;
         case "meal": daily.meals.pop(); break;

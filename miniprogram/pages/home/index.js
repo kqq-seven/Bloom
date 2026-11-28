@@ -30,8 +30,8 @@ Page({
       nickname,
       avatarText: Array.from(nickname)[0],
       todayLabel: `${date.getMonth() + 1}月${date.getDate()}日 · ${["星期日","星期一","星期二","星期三","星期四","星期五","星期六"][date.getDay()]}`,
-      empty: !Boolean(state.tasks?.length || state.items?.length || notes.length || mealCount || todayRecord.mood != null || state.milestones?.length || summary.last),
-      taskCount: state.tasks?.length || 0,
+      empty: !Boolean(records.some(record => record.tasks?.length) || state.items?.length || notes.length || mealCount || todayRecord.mood != null || state.milestones?.length || summary.last),
+      taskCount: todayRecord.tasks.length,
       noteCount: notes.length,
       latestNote: notes[0]?.text || "",
       cycleSummary: summary,
@@ -50,7 +50,7 @@ Page({
     const noteCount = records.reduce((count, record) => count + (record.notes?.length || 0), 0);
     const scheduleCount = records.reduce((count, record) => count + (record.schedule?.length || 0), 0);
     return [
-      { id: "todo", title: "今日待办", description: `${state.tasks?.length || 0} 项待办`, icon: "✓", tone: "mint" },
+      { id: "todo", title: "今日待办", description: `${getDailyRecord(state, dateKey()).tasks.length} 项待办`, icon: "✓", tone: "mint" },
       { id: "plan", title: "一日时间规划", description: `${scheduleCount} 段安排`, icon: "◷", tone: "mint" },
       { id: "storage", title: "收纳与物品", description: `${state.items?.length || 0} 件物品`, icon: "▤", tone: "rose" },
       { id: "cycle", title: "经期与周期", description: summary.last ? `距上次结束 ${summary.daysSinceEnd ?? "—"} 天` : "记录身体节律", icon: "♡", tone: "coral" },
@@ -80,7 +80,7 @@ Page({
       const name = (result.content || "").trim();
       if (!result.confirm || !name) return;
       const app = getApp();
-      app.globalData.state.tasks = [...(app.globalData.state.tasks || []), { name, tag: "今日待办", time: "", done: false }];
+      getDailyRecord(app.globalData.state, dateKey()).tasks.push({ recordDate: dateKey(), name, tag: "今日待办", time: "", done: false });
       try { await app.saveState(); this.onShow(); }
       catch (error) { wx.showToast({ title: error.message || "保存失败", icon: "none" }); }
     }});
@@ -92,7 +92,7 @@ Page({
       if (!result.confirm || !text) return;
       const app = getApp();
       const record = getDailyRecord(app.globalData.state, dateKey());
-      record.notes.unshift({ text, date: `${dateKey()} ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}` });
+      record.notes.unshift({ recordDate: dateKey(), text, date: `${dateKey()} ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}` });
       try { await app.saveState(); this.onShow(); }
       catch (error) { wx.showToast({ title: error.message || "保存失败", icon: "none" }); }
     }});
